@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7f7;
+  --foreground: #1f2937;
+
+  --cemig-header: #1e5a4b;
+  --cemig-gradient-start: #8bc53f;
+  --cemig-gradient-end: #3d9b3d;
+  --cemig-badge: #1e7a5f;
+  --cemig-card-bg: #f2f2f2;
+  --cemig-card-border: #e0e0e0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cemig-header: var(--cemig-header);
+  --color-cemig-gradient-start: var(--cemig-gradient-start);
+  --color-cemig-gradient-end: var(--cemig-gradient-end);
+  --color-cemig-badge: var(--cemig-badge);
+  --color-cemig-card-bg: var(--cemig-card-bg);
+  --color-cemig-card-border: var(--cemig-card-border);
+  --font-sans: "Segoe UI", Roboto, "Open Sans", Helvetica, Arial, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
