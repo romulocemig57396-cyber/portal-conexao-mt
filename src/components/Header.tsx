@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signOut } from "@/auth";
 import type { Papel } from "@/lib/db";
 
@@ -23,6 +24,12 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
             <p className="font-medium">{nome}</p>
             <p className="text-white/70">{PAPEL_LABEL[papel]}</p>
           </div>
+          <Link
+            href="/perfil"
+            className="rounded-md border border-white/30 px-3 py-1.5 text-white/90 transition hover:bg-white/10"
+          >
+            Alterar senha
+          </Link>
           <form
             action={async () => {
               "use server";

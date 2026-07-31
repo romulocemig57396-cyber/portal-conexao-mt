@@ -109,6 +109,22 @@ export async function listUsuarios(): Promise<Usuario[]> {
   return result.rows.map((row) => toPlain<Usuario>(row as unknown as Record<string, unknown>));
 }
 
+export async function removerUsuarioPorLogin(usuario: string): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "DELETE FROM usuarios WHERE usuario = ?",
+    args: [usuario],
+  });
+}
+
+export async function atualizarSenhaUsuario(id: number, novaSenhaHash: string): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
+    args: [novaSenhaHash, id],
+  });
+}
+
 export async function criarUsuario(data: {
   nome: string;
   usuario: string;
