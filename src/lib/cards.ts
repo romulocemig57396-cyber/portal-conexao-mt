@@ -16,7 +16,8 @@ export type Card = {
   tipo: "link" | "interno";
   url?: string; // se tipo = link
   rota?: string; // se tipo = interno, ex: /calendario
-  icone?: string;
+  icone?: string; // emoji, usado quando não há logo oficial
+  iconeImg?: string; // caminho para logo oficial em public/icons, tem prioridade sobre icone
   /** Papéis que podem ver o card. Se omitido, visível para todos. */
   papeis?: Papel[];
 };
@@ -97,7 +98,7 @@ export const cards: Card[] = [
     categoria: "Ferramentas",
     tipo: "link",
     url: process.env.NEXT_PUBLIC_CEMIGON_URL ?? "#",
-    icone: "⚡",
+    iconeImg: "/icons/cemig-logo.svg",
   },
   {
     id: "conecta",
@@ -124,7 +125,7 @@ export const cards: Card[] = [
     categoria: "Ferramentas",
     tipo: "link",
     url: process.env.NEXT_PUBLIC_SAP_URL ?? "#",
-    icone: "🖥️",
+    iconeImg: "/icons/sap-logo.svg",
   },
   {
     id: "gedex",

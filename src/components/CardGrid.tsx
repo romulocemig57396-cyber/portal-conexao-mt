@@ -14,7 +14,13 @@ export function CardGrid({ cards }: { cards: Card[] }) {
 function CardItem({ card }: { card: Card }) {
   const conteudo = (
     <>
-      {card.icone && <span className="text-2xl">{card.icone}</span>}
+      <div className="flex h-8 items-center">
+        {card.iconeImg ? (
+          <img src={card.iconeImg} alt="" className="h-full w-auto max-w-[120px] object-contain" />
+        ) : (
+          card.icone && <span className="text-2xl leading-none">{card.icone}</span>
+        )}
+      </div>
       <h2 className="mt-4 text-base font-semibold text-gray-900">{card.titulo}</h2>
       <p className="mt-1 text-sm text-gray-600">{card.descricao}</p>
     </>
