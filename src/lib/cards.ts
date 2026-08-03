@@ -41,6 +41,14 @@ export const cards: Card[] = [
     url: process.env.NEXT_PUBLIC_PAINEL_REGULATORIOS_URL ?? "#",
     icone: "📋",
   },
+  {
+    id: "orcamento-mt",
+    titulo: "Orçamento MT",
+    descricao: "Painel de acompanhamento do orçamento",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_ORCAMENTO_MT_URL ?? "#",
+    icone: "💰",
+  },
 ];
 
 export function cardsParaPapel(papel: Papel): Card[] {
