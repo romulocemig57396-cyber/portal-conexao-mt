@@ -20,7 +20,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const user = await findUsuarioByLogin(usuario);
-        if (!user) return null;
+        if (!user || !user.ativo) return null;
 
         const senhaValida = bcrypt.compareSync(senha, user.senha_hash);
         if (!senhaValida) return null;

@@ -10,6 +10,19 @@ export interface Usuario {
   usuario: string;
   senha_hash: string;
   papel: Papel;
+  ativo: boolean;
+}
+
+export type UsuarioPublico = Omit<Usuario, "senha_hash">;
+
+export function paraUsuarioPublico(usuario: Usuario): UsuarioPublico {
+  return {
+    id: usuario.id,
+    nome: usuario.nome,
+    usuario: usuario.usuario,
+    papel: usuario.papel,
+    ativo: usuario.ativo,
+  };
 }
 
 export interface SolicitacaoAusencia {
@@ -37,6 +50,10 @@ function toPlain<T>(row: Record<string, unknown>): T {
   return { ...row } as T;
 }
 
+function toUsuario(row: Record<string, unknown>): Usuario {
+  return { ...row, ativo: Boolean(row.ativo) } as Usuario;
+}
+
 async function migrate(client: Client) {
   await client.batch(
     [
@@ -45,7 +62,8 @@ async function migrate(client: Client) {
         nome TEXT NOT NULL,
         usuario TEXT NOT NULL UNIQUE,
         senha_hash TEXT NOT NULL,
-        papel TEXT NOT NULL CHECK (papel IN ('gestor', 'colaborador'))
+        papel TEXT NOT NULL CHECK (papel IN ('gestor', 'colaborador')),
+        ativo INTEGER NOT NULL DEFAULT 1
       )`,
       `CREATE TABLE IF NOT EXISTS solicitacoes_ausencia (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,6 +79,12 @@ async function migrate(client: Client) {
     ],
     "write"
   );
+
+  const colunas = await client.execute("PRAGMA table_info(usuarios)");
+  const temAtivo = colunas.rows.some((r) => (r as unknown as { name: string }).name === "ativo");
+  if (!temAtivo) {
+    await client.execute("ALTER TABLE usuarios ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1");
+  }
 }
 
 function getClient(): Client {
@@ -90,7 +114,7 @@ export async function findUsuarioByLogin(usuario: string): Promise<Usuario | und
     args: [usuario],
   });
   const row = result.rows[0];
-  return row ? toPlain<Usuario>(row as unknown as Record<string, unknown>) : undefined;
+  return row ? toUsuario(row as unknown as Record<string, unknown>) : undefined;
 }
 
 export async function findUsuarioById(id: number): Promise<Usuario | undefined> {
@@ -100,13 +124,13 @@ export async function findUsuarioById(id: number): Promise<Usuario | undefined> 
     args: [id],
   });
   const row = result.rows[0];
-  return row ? toPlain<Usuario>(row as unknown as Record<string, unknown>) : undefined;
+  return row ? toUsuario(row as unknown as Record<string, unknown>) : undefined;
 }
 
 export async function listUsuarios(): Promise<Usuario[]> {
   const client = await ready();
   const result = await client.execute("SELECT * FROM usuarios ORDER BY nome");
-  return result.rows.map((row) => toPlain<Usuario>(row as unknown as Record<string, unknown>));
+  return result.rows.map((row) => toUsuario(row as unknown as Record<string, unknown>));
 }
 
 export async function removerUsuarioPorLogin(usuario: string): Promise<void> {
@@ -122,6 +146,34 @@ export async function atualizarSenhaUsuario(id: number, novaSenhaHash: string): 
   await client.execute({
     sql: "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
     args: [novaSenhaHash, id],
+  });
+}
+
+export async function atualizarUsuario(
+  id: number,
+  data: { nome?: string; papel?: Papel }
+): Promise<Usuario | undefined> {
+  const client = await ready();
+  if (data.nome !== undefined) {
+    await client.execute({
+      sql: "UPDATE usuarios SET nome = ? WHERE id = ?",
+      args: [data.nome, id],
+    });
+  }
+  if (data.papel !== undefined) {
+    await client.execute({
+      sql: "UPDATE usuarios SET papel = ? WHERE id = ?",
+      args: [data.papel, id],
+    });
+  }
+  return findUsuarioById(id);
+}
+
+export async function atualizarAtivoUsuario(id: number, ativo: boolean): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "UPDATE usuarios SET ativo = ? WHERE id = ?",
+    args: [ativo ? 1 : 0, id],
   });
 }
 

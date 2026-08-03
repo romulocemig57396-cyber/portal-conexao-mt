@@ -9,6 +9,15 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     return NextResponse.redirect(loginUrl);
   }
+
+  const { pathname } = req.nextUrl;
+  const rotaAdmin = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
+  if (rotaAdmin && req.auth.user.papel !== "gestor") {
+    if (pathname.startsWith("/api/admin")) {
+      return NextResponse.json({ error: "Acesso restrito ao gestor." }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/", req.url));
+  }
 });
 
 export const config = {
