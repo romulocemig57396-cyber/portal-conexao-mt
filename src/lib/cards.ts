@@ -89,6 +89,14 @@ export const cards: Card[] = [
     url: process.env.NEXT_PUBLIC_UNIVERCEMIG_URL ?? "#",
     icone: "🎓",
   },
+  {
+    id: "sap",
+    titulo: "SAP",
+    descricao: "Acesso ao S4 Hana",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_SAP_URL ?? "#",
+    icone: "🖥️",
+  },
 ];
 
 export function cardsParaPapel(papel: Papel): Card[] {
