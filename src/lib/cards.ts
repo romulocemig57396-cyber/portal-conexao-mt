@@ -1,6 +1,11 @@
 import type { Papel } from "@/lib/db";
 
-export type Categoria = "Equipe" | "Acompanhamento" | "Ferramentas" | "Portais Cemig";
+export type Categoria =
+  | "Equipe"
+  | "Acompanhamento"
+  | "Ferramentas"
+  | "Portais Cemig"
+  | "Ferramentas IA";
 
 export type Card = {
   id: string;
@@ -21,6 +26,7 @@ export const ORDEM_CATEGORIAS: Categoria[] = [
   "Acompanhamento",
   "Ferramentas",
   "Portais Cemig",
+  "Ferramentas IA",
 ];
 
 /**
@@ -117,6 +123,51 @@ export const cards: Card[] = [
     tipo: "link",
     url: process.env.NEXT_PUBLIC_SAP_URL ?? "#",
     icone: "🖥️",
+  },
+  {
+    id: "gedex",
+    titulo: "GEDEX",
+    descricao: "",
+    categoria: "Ferramentas",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_GEDEX_URL ?? "#",
+    icone: "🗃️",
+  },
+  {
+    id: "chatenergy",
+    titulo: "ChatEnergy",
+    descricao: "",
+    categoria: "Ferramentas IA",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_CHATENERGY_URL ?? "#",
+    icone: "🔋",
+  },
+  {
+    id: "cemig-chat",
+    titulo: "Cemig Chat",
+    descricao: "",
+    categoria: "Ferramentas IA",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_CEMIG_CHAT_URL ?? "#",
+    icone: "💬",
+  },
+  {
+    id: "copilot",
+    titulo: "Copilot",
+    descricao: "",
+    categoria: "Ferramentas IA",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_COPILOT_URL ?? "#",
+    icone: "🤖",
+  },
+  {
+    id: "claude",
+    titulo: "Claude",
+    descricao: "",
+    categoria: "Ferramentas IA",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_CLAUDE_URL ?? "#",
+    icone: "✨",
   },
 ];
 
