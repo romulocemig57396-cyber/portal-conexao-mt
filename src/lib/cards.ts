@@ -137,6 +137,15 @@ export const cards: Card[] = [
     icone: "🖇️",
   },
   {
+    id: "mapa-fundiario",
+    titulo: "Mapa de análise fundiária",
+    descricao: "",
+    categoria: "Ferramentas",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_MAPA_FUNDIARIO_URL ?? "#",
+    icone: "🗺️",
+  },
+  {
     id: "gedex",
     titulo: "GEDEX",
     descricao: "",
