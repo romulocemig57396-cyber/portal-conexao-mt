@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { atualizarStatusSolicitacao, criarSolicitacao } from "@/lib/db";
+import { atualizarStatusSolicitacao, criarSolicitacao, excluirSolicitacao } from "@/lib/db";
 
 export type SolicitacaoActionState = { error?: string } | undefined;
 
@@ -60,5 +60,15 @@ export async function recusarSolicitacaoAction(formData: FormData) {
   }
   const id = Number(formData.get("id"));
   await atualizarStatusSolicitacao(id, "recusada", Number(session.user.id));
+  revalidatePath("/calendario");
+}
+
+export async function excluirSolicitacaoAction(formData: FormData) {
+  const session = await auth();
+  if (!session || session.user.papel !== "gestor") {
+    throw new Error("Apenas o gestor pode excluir períodos agendados.");
+  }
+  const id = Number(formData.get("id"));
+  await excluirSolicitacao(id);
   revalidatePath("/calendario");
 }

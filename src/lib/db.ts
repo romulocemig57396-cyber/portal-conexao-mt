@@ -271,3 +271,11 @@ export async function atualizarStatusSolicitacao(
   });
   return findSolicitacaoById(id);
 }
+
+export async function excluirSolicitacao(id: number): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "DELETE FROM solicitacoes_ausencia WHERE id = ?",
+    args: [id],
+  });
+}

@@ -4,6 +4,7 @@ import { TeamCalendar } from "@/components/calendario/TeamCalendar";
 import { NovaSolicitacaoForm } from "@/components/calendario/NovaSolicitacaoForm";
 import { MinhasSolicitacoes } from "@/components/calendario/MinhasSolicitacoes";
 import { FilaAprovacao } from "@/components/calendario/FilaAprovacao";
+import { PeriodosAgendados } from "@/components/calendario/PeriodosAgendados";
 import {
   listSolicitacoesAprovadas,
   listSolicitacoesPendentes,
@@ -46,11 +47,19 @@ export default async function CalendarioPage() {
                 </div>
               </>
             ) : (
-              <div>
-                <h2 className="mb-2 text-sm font-semibold text-gray-900">
-                  Solicitações pendentes
-                </h2>
-                <FilaAprovacao solicitacoes={pendentes} />
+              <div className="space-y-6">
+                <div>
+                  <h2 className="mb-2 text-sm font-semibold text-gray-900">
+                    Solicitações pendentes
+                  </h2>
+                  <FilaAprovacao solicitacoes={pendentes} />
+                </div>
+                <div>
+                  <h2 className="mb-2 text-sm font-semibold text-gray-900">
+                    Períodos agendados
+                  </h2>
+                  <PeriodosAgendados solicitacoes={aprovadas} />
+                </div>
               </div>
             )}
           </div>
