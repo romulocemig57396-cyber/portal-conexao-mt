@@ -19,7 +19,11 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
             title="Voltar para a home"
             className="flex items-center gap-3 transition hover:opacity-90"
           >
-            <span className="inline-block h-9 w-9 rounded-lg bg-gradient-to-br from-cemig-gradient-start to-cemig-gradient-end" />
+            <img
+              src="/icons/icone-subestacao.svg"
+              alt=""
+              className="h-9 w-9 shrink-0 object-contain"
+            />
             <div>
               <p className={`${ssBroad.className} text-lg font-semibold leading-tight`}>
                 Conexão MT
