@@ -12,9 +12,7 @@ export default async function HomePage() {
     <>
       <Header nome={user.name ?? user.id} papel={user.papel} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        <h1 className="text-xl font-semibold text-gray-900">Painéis</h1>
-        <p className="mt-1 text-sm text-gray-600">Selecione um painel para começar.</p>
-        <div className="mt-6 space-y-10">
+        <div className="space-y-10">
           {secoes.map((secao) => (
             <section key={secao.categoria}>
               <h2 className="text-lg font-semibold text-gray-900">{secao.categoria}</h2>
