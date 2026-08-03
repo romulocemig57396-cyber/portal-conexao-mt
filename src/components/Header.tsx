@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signOut } from "@/auth";
 import type { Papel } from "@/lib/db";
+import { ssBroad } from "@/fonts/ss-broad";
 
 const PAPEL_LABEL: Record<Papel, string> = {
   gestor: "Gestor",
@@ -23,7 +24,9 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
           <Link href="/" className="flex items-center gap-3 transition hover:opacity-90">
             <span className="inline-block h-9 w-9 rounded-lg bg-gradient-to-br from-cemig-gradient-start to-cemig-gradient-end" />
             <div>
-              <p className="text-lg font-semibold leading-tight">Conexão MT</p>
+              <p className={`${ssBroad.className} text-lg font-semibold leading-tight`}>
+                Conexão MT
+              </p>
               <p className="text-xs leading-tight text-white/70">Portal da equipe</p>
             </div>
           </Link>
