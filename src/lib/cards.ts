@@ -5,7 +5,8 @@ export type Categoria =
   | "Acompanhamento"
   | "Ferramentas"
   | "Portais Cemig"
-  | "Ferramentas IA";
+  | "Ferramentas IA"
+  | "Gestão APRWEB";
 
 export type Card = {
   id: string;
@@ -27,6 +28,7 @@ export const ORDEM_CATEGORIAS: Categoria[] = [
   "Ferramentas",
   "Portais Cemig",
   "Ferramentas IA",
+  "Gestão APRWEB",
 ];
 
 /**
@@ -168,6 +170,66 @@ export const cards: Card[] = [
     tipo: "link",
     url: process.env.NEXT_PUBLIC_CLAUDE_URL ?? "#",
     icone: "✨",
+  },
+  {
+    id: "agu",
+    titulo: "AGU",
+    descricao: "",
+    categoria: "Gestão APRWEB",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_AGU_URL ?? "#",
+    icone: "🏛️",
+    papeis: ["gestor"],
+  },
+  {
+    id: "consulta-cemig-atende",
+    titulo: "Consulta Cemig Atende",
+    descricao: "",
+    categoria: "Gestão APRWEB",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_CONSULTA_CEMIG_ATENDE_URL ?? "#",
+    icone: "🔍",
+    papeis: ["gestor"],
+  },
+  {
+    id: "netadmin",
+    titulo: "NETAdmin",
+    descricao: "",
+    categoria: "Gestão APRWEB",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_NETADMIN_URL ?? "#",
+    icone: "🌐",
+    papeis: ["gestor"],
+  },
+  {
+    id: "geset",
+    titulo: "GESET",
+    descricao: "",
+    categoria: "Gestão APRWEB",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_GESET_URL ?? "#",
+    icone: "🧾",
+    papeis: ["gestor"],
+  },
+  {
+    id: "email-duvidas",
+    titulo: "Email Dúvidas",
+    descricao: "",
+    categoria: "Gestão APRWEB",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_EMAIL_DUVIDAS_URL ?? "#",
+    icone: "📧",
+    papeis: ["gestor"],
+  },
+  {
+    id: "planilha-profissionais",
+    titulo: "Planilha de profissionais cadastrados",
+    descricao: "",
+    categoria: "Gestão APRWEB",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_PLANILHA_PROFISSIONAIS_URL ?? "#",
+    icone: "📑",
+    papeis: ["gestor"],
   },
 ];
 
