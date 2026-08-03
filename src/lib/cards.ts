@@ -81,6 +81,14 @@ export const cards: Card[] = [
     url: process.env.NEXT_PUBLIC_CONECTA_URL ?? "#",
     icone: "🔗",
   },
+  {
+    id: "univercemig",
+    titulo: "Univercemig",
+    descricao: "Portal de cursos Cemig",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_UNIVERCEMIG_URL ?? "#",
+    icone: "🎓",
+  },
 ];
 
 export function cardsParaPapel(papel: Papel): Card[] {
