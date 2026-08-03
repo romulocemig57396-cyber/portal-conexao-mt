@@ -44,10 +44,42 @@ export const cards: Card[] = [
   {
     id: "orcamento-mt",
     titulo: "Orçamento MT",
-    descricao: "Painel de acompanhamento do orçamento",
+    descricao: "Ferramenta de apoio na emissão de orçamentos",
     tipo: "link",
     url: process.env.NEXT_PUBLIC_ORCAMENTO_MT_URL ?? "#",
     icone: "💰",
+  },
+  {
+    id: "aprweb",
+    titulo: "APRWEB",
+    descricao: "Sistema de envio de arquivos por RT's",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_APRWEB_URL ?? "#",
+    icone: "📤",
+  },
+  {
+    id: "chamados",
+    titulo: "Chamados",
+    descricao: "Sistema para abertura de chamados para TI e demais áreas",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_CHAMADOS_URL ?? "#",
+    icone: "🎫",
+  },
+  {
+    id: "cemigon",
+    titulo: "CemigON",
+    descricao: "",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_CEMIGON_URL ?? "#",
+    icone: "⚡",
+  },
+  {
+    id: "conecta",
+    titulo: "Conecta",
+    descricao: "Página principal sharepoint",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_CONECTA_URL ?? "#",
+    icone: "🔗",
   },
 ];
 
