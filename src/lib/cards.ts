@@ -128,6 +128,15 @@ export const cards: Card[] = [
     iconeImg: "/icons/sap-logo.svg",
   },
   {
+    id: "workspace",
+    titulo: "Workspace",
+    descricao: "Eletric Office, GDIS",
+    categoria: "Ferramentas",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_WORKSPACE_URL ?? "#",
+    icone: "🖇️",
+  },
+  {
     id: "gedex",
     titulo: "GEDEX",
     descricao: "",
