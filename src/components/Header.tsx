@@ -17,11 +17,8 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
             href="/"
             aria-label="Voltar para a home"
             title="Voltar para a home"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-lg text-white/90 transition hover:bg-white/10"
+            className="flex items-center gap-3 transition hover:opacity-90"
           >
-            🏠
-          </Link>
-          <Link href="/" className="flex items-center gap-3 transition hover:opacity-90">
             <span className="inline-block h-9 w-9 rounded-lg bg-gradient-to-br from-cemig-gradient-start to-cemig-gradient-end" />
             <div>
               <p className={`${ssBroad.className} text-lg font-semibold leading-tight`}>
