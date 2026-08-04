@@ -2,6 +2,7 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import type { Papel } from "@/lib/db";
 import { ssBroad } from "@/fonts/ss-broad";
+import { ClimaWidget } from "@/components/ClimaWidget";
 
 const PAPEL_LABEL: Record<Papel, string> = {
   gestor: "Gestor",
@@ -10,7 +11,7 @@ const PAPEL_LABEL: Record<Papel, string> = {
 
 export function Header({ nome, papel }: { nome: string; papel: Papel }) {
   return (
-    <header className="bg-cemig-header text-white">
+    <header className="relative bg-cemig-header text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
         <div className="flex items-center gap-2">
           <Link
@@ -66,6 +67,10 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
             </button>
           </form>
         </div>
+      </div>
+
+      <div className="absolute right-4 top-full z-10 mt-2">
+        <ClimaWidget />
       </div>
     </header>
   );
