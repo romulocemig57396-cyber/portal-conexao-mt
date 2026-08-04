@@ -58,6 +58,19 @@ export interface ResumoDiario {
   atualizado_em: string;
 }
 
+export interface Aviso {
+  id: number;
+  titulo: string;
+  mensagem: string;
+  criado_por: number;
+  criado_em: string;
+  ativo: boolean;
+}
+
+export interface AvisoComAutor extends Aviso {
+  autor_nome: string;
+}
+
 declare global {
   var __portalDb: Client | undefined;
   var __portalDbReady: Promise<void> | undefined;
@@ -69,6 +82,10 @@ function toPlain<T>(row: Record<string, unknown>): T {
 
 function toUsuario(row: Record<string, unknown>): Usuario {
   return { ...row, ativo: Boolean(row.ativo) } as Usuario;
+}
+
+function toAviso<T extends Aviso>(row: Record<string, unknown>): T {
+  return { ...row, ativo: Boolean(row.ativo) } as T;
 }
 
 async function migrate(client: Client) {
@@ -102,6 +119,14 @@ async function migrate(client: Client) {
         resumo_por_codigo TEXT NOT NULL,
         resumo_grupo2 TEXT NOT NULL,
         atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS avisos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        mensagem TEXT NOT NULL,
+        criado_por INTEGER NOT NULL REFERENCES usuarios(id),
+        criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+        ativo INTEGER NOT NULL DEFAULT 1
       )`,
     ],
     "write"
@@ -353,4 +378,71 @@ export async function getResumoMaisRecente(): Promise<ResumoDiario | undefined> 
     resumo_por_codigo: JSON.parse(row.resumo_por_codigo as string),
     resumo_grupo2: JSON.parse(row.resumo_grupo2 as string),
   } as ResumoDiario;
+}
+
+// ---- avisos ----
+
+const SELECT_AVISO_COM_AUTOR = `
+  SELECT a.*, u.nome AS autor_nome
+  FROM avisos a
+  JOIN usuarios u ON u.id = a.criado_por
+`;
+
+export async function listAvisosAtivos(): Promise<AvisoComAutor[]> {
+  const client = await ready();
+  const result = await client.execute(
+    `${SELECT_AVISO_COM_AUTOR} WHERE a.ativo = 1 ORDER BY a.criado_em DESC`
+  );
+  return result.rows.map((row) => toAviso<AvisoComAutor>(row as unknown as Record<string, unknown>));
+}
+
+export async function listAvisos(): Promise<AvisoComAutor[]> {
+  const client = await ready();
+  const result = await client.execute(`${SELECT_AVISO_COM_AUTOR} ORDER BY a.criado_em DESC`);
+  return result.rows.map((row) => toAviso<AvisoComAutor>(row as unknown as Record<string, unknown>));
+}
+
+export async function findAvisoById(id: number): Promise<Aviso | undefined> {
+  const client = await ready();
+  const result = await client.execute({ sql: "SELECT * FROM avisos WHERE id = ?", args: [id] });
+  const row = result.rows[0];
+  return row ? toAviso<Aviso>(row as unknown as Record<string, unknown>) : undefined;
+}
+
+export async function criarAviso(data: {
+  titulo: string;
+  mensagem: string;
+  criadoPor: number;
+}): Promise<Aviso> {
+  const client = await ready();
+  const result = await client.execute({
+    sql: "INSERT INTO avisos (titulo, mensagem, criado_por) VALUES (?, ?, ?)",
+    args: [data.titulo, data.mensagem, data.criadoPor],
+  });
+  return (await findAvisoById(Number(result.lastInsertRowid)))!;
+}
+
+export async function atualizarAviso(
+  id: number,
+  data: { titulo?: string; mensagem?: string }
+): Promise<Aviso | undefined> {
+  const client = await ready();
+  if (data.titulo !== undefined) {
+    await client.execute({ sql: "UPDATE avisos SET titulo = ? WHERE id = ?", args: [data.titulo, id] });
+  }
+  if (data.mensagem !== undefined) {
+    await client.execute({
+      sql: "UPDATE avisos SET mensagem = ? WHERE id = ?",
+      args: [data.mensagem, id],
+    });
+  }
+  return findAvisoById(id);
+}
+
+export async function atualizarAtivoAviso(id: number, ativo: boolean): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "UPDATE avisos SET ativo = ? WHERE id = ?",
+    args: [ativo ? 1 : 0, id],
+  });
 }

@@ -3,7 +3,9 @@ import { auth } from "@/auth";
 import { Header } from "@/components/Header";
 import { NovoUsuarioForm } from "@/components/admin/NovoUsuarioForm";
 import { UsuariosTable } from "@/components/admin/UsuariosTable";
-import { listUsuarios, paraUsuarioPublico } from "@/lib/db";
+import { NovoAvisoForm } from "@/components/admin/NovoAvisoForm";
+import { AvisosTable } from "@/components/admin/AvisosTable";
+import { listUsuarios, paraUsuarioPublico, listAvisos } from "@/lib/db";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -14,6 +16,7 @@ export default async function AdminPage() {
 
   const usuarios = await listUsuarios();
   const usuariosPublicos = usuarios.map(paraUsuarioPublico);
+  const avisos = await listAvisos();
 
   return (
     <>
@@ -27,6 +30,16 @@ export default async function AdminPage() {
         <div className="mt-6 space-y-6">
           <NovoUsuarioForm />
           <UsuariosTable usuarios={usuariosPublicos} usuarioAtualId={Number(user.id)} />
+        </div>
+
+        <h2 className="mt-10 text-xl font-semibold text-gray-900">Avisos</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Publique, edite e ative/desative os avisos exibidos na home do portal.
+        </p>
+
+        <div className="mt-6 space-y-6">
+          <NovoAvisoForm />
+          <AvisosTable avisos={avisos} />
         </div>
       </main>
     </>

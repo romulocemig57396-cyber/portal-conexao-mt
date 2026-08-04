@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { Header } from "@/components/Header";
 import { CardGrid } from "@/components/CardGrid";
 import { NoticiasSection } from "@/components/NoticiasSection";
+import { AvisosSection } from "@/components/AvisosSection";
 import { agruparPorCategoria, cardsParaPapel } from "@/lib/cards";
 
 export default async function HomePage() {
@@ -22,7 +23,10 @@ export default async function HomePage() {
               </div>
             </section>
           ))}
-          <NoticiasSection />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <AvisosSection />
+            <NoticiasSection />
+          </div>
         </div>
       </main>
     </>
