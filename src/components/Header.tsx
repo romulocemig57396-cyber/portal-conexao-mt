@@ -3,6 +3,7 @@ import { signOut } from "@/auth";
 import type { Papel } from "@/lib/db";
 import { ssBroad } from "@/fonts/ss-broad";
 import { ClimaWidget } from "@/components/ClimaWidget";
+import { AniversariantesSection } from "@/components/AniversariantesSection";
 
 const PAPEL_LABEL: Record<Papel, string> = {
   gestor: "Gestor",
@@ -69,8 +70,9 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
         </div>
       </div>
 
-      <div className="absolute right-4 top-full z-10 mt-2">
+      <div className="absolute right-4 top-full z-10 mt-2 space-y-2">
         <ClimaWidget />
+        <AniversariantesSection />
       </div>
     </header>
   );
