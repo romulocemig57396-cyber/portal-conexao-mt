@@ -110,6 +110,15 @@ export const cards: Card[] = [
     icone: "🔗",
   },
   {
+    id: "normas-tecnicas",
+    titulo: "Normas Técnicas",
+    descricao: "",
+    categoria: "Portais Cemig",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_NORMAS_TECNICAS_URL ?? "#",
+    icone: "📐",
+  },
+  {
     id: "univercemig",
     titulo: "Univercemig",
     descricao: "Portal de cursos Cemig",
