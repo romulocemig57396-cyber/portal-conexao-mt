@@ -484,7 +484,7 @@ export async function listAniversariantesDoMes(): Promise<Aniversariante[]> {
     .map((row) => {
       const r = row as unknown as { nome: string; data_nascimento: string };
       const [, mesStr, diaStr] = r.data_nascimento.split("-");
-      return { nome: r.nome, mes: Number(mesStr), dia: Number(diaStr) };
+      return { nome: r.nome.split(" ")[0], mes: Number(mesStr), dia: Number(diaStr) };
     })
     .filter((a) => a.mes === mesAtual)
     .sort((a, b) => a.dia - b.dia);
