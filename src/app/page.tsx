@@ -18,7 +18,7 @@ export default async function HomePage() {
             <section key={secao.categoria}>
               <h2 className="text-lg font-semibold text-gray-900">{secao.categoria}</h2>
               <div className="mt-4">
-                <CardGrid cards={secao.cards} />
+                <CardGrid cards={secao.cards} papel={user.papel} />
               </div>
             </section>
           ))}

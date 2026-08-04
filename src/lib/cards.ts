@@ -20,6 +20,8 @@ export type Card = {
   iconeImg?: string; // caminho para logo oficial em public/icons, tem prioridade sobre icone
   /** Papéis que podem ver o card. Se omitido, visível para todos. */
   papeis?: Papel[];
+  /** Papéis para os quais o card aparece visível mas desabilitado, com rótulo "Em breve". */
+  desabilitadoPara?: Papel[];
 };
 
 /** Ordem fixa de exibição das seções na home. */
@@ -45,6 +47,7 @@ export const cards: Card[] = [
     tipo: "link",
     url: process.env.NEXT_PUBLIC_PAINEL_MEDIDAS_URL ?? "#",
     icone: "📊",
+    desabilitadoPara: ["colaborador"],
   },
   {
     id: "calendario",
