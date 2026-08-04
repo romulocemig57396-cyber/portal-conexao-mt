@@ -68,6 +68,15 @@ export const cards: Card[] = [
     icone: "📋",
   },
   {
+    id: "mygrd",
+    titulo: "MyGRD",
+    descricao: "",
+    categoria: "Acompanhamento",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_MYGRD_URL ?? "#",
+    icone: "📈",
+  },
+  {
     id: "orcamento-mt",
     titulo: "Orçamento MT",
     descricao: "Ferramenta de apoio na emissão de orçamentos",
@@ -111,6 +120,15 @@ export const cards: Card[] = [
     tipo: "link",
     url: process.env.NEXT_PUBLIC_CONECTA_URL ?? "#",
     icone: "🔗",
+  },
+  {
+    id: "site-pe",
+    titulo: "Site PE",
+    descricao: "Procedimentos e demais ferramentas",
+    categoria: "Portais Cemig",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_SITE_PE_URL ?? "#",
+    icone: "📄",
   },
   {
     id: "normas-tecnicas",
@@ -192,6 +210,15 @@ export const cards: Card[] = [
     tipo: "link",
     url: process.env.NEXT_PUBLIC_MAPA_FUNDIARIO_URL ?? "#",
     icone: "🗺️",
+  },
+  {
+    id: "tabelas-orcamento",
+    titulo: "Tabelas orçamento",
+    descricao: "TOD e CAOR",
+    categoria: "Ferramentas",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_TABELAS_ORCAMENTO_URL ?? "#",
+    icone: "🧮",
   },
   {
     id: "gedex",
