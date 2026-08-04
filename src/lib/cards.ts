@@ -146,6 +146,15 @@ export const cards: Card[] = [
     icone: "🖇️",
   },
   {
+    id: "ide-sisema",
+    titulo: "IDE-Sisema/MG",
+    descricao: "",
+    categoria: "Ferramentas",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_IDE_SISEMA_URL ?? "#",
+    icone: "🌎",
+  },
+  {
     id: "sicar",
     titulo: "SICAR",
     descricao: "",
