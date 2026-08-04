@@ -41,6 +41,23 @@ export interface SolicitacaoComUsuario extends SolicitacaoAusencia {
   usuario_nome: string;
 }
 
+export type ResumoGraficoJson = {
+  resumo: { COD_MEDIDA: string; COD_STAT_USU: string; QUANTIDADE: number }[];
+  codigos: string[];
+  statusList: string[];
+};
+
+export interface ResumoDiario {
+  id: number;
+  data: string;
+  total_pendentes: number;
+  em_atraso: number;
+  areas_envolvidas: number;
+  resumo_por_codigo: ResumoGraficoJson;
+  resumo_grupo2: ResumoGraficoJson;
+  atualizado_em: string;
+}
+
 declare global {
   var __portalDb: Client | undefined;
   var __portalDbReady: Promise<void> | undefined;
@@ -74,6 +91,16 @@ async function migrate(client: Client) {
         status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'aprovada', 'recusada')),
         aprovado_por INTEGER REFERENCES usuarios(id),
         criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+        atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS resumo_diario (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        data TEXT NOT NULL UNIQUE,
+        total_pendentes INTEGER NOT NULL DEFAULT 0,
+        em_atraso INTEGER NOT NULL DEFAULT 0,
+        areas_envolvidas INTEGER NOT NULL DEFAULT 0,
+        resumo_por_codigo TEXT NOT NULL,
+        resumo_grupo2 TEXT NOT NULL,
         atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
     ],
@@ -278,4 +305,52 @@ export async function excluirSolicitacao(id: number): Promise<void> {
     sql: "DELETE FROM solicitacoes_ausencia WHERE id = ?",
     args: [id],
   });
+}
+
+// ---- resumo_diario ----
+
+export async function upsertResumoDiario(data: {
+  data: string;
+  totalPendentes: number;
+  emAtraso: number;
+  areasEnvolvidas: number;
+  resumoPorCodigo: ResumoGraficoJson;
+  resumoGrupo2: ResumoGraficoJson;
+}): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: `INSERT INTO resumo_diario
+            (data, total_pendentes, em_atraso, areas_envolvidas, resumo_por_codigo, resumo_grupo2, atualizado_em)
+          VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+          ON CONFLICT(data) DO UPDATE SET
+            total_pendentes = excluded.total_pendentes,
+            em_atraso = excluded.em_atraso,
+            areas_envolvidas = excluded.areas_envolvidas,
+            resumo_por_codigo = excluded.resumo_por_codigo,
+            resumo_grupo2 = excluded.resumo_grupo2,
+            atualizado_em = datetime('now')`,
+    args: [
+      data.data,
+      data.totalPendentes,
+      data.emAtraso,
+      data.areasEnvolvidas,
+      JSON.stringify(data.resumoPorCodigo),
+      JSON.stringify(data.resumoGrupo2),
+    ],
+  });
+}
+
+export async function getResumoMaisRecente(): Promise<ResumoDiario | undefined> {
+  const client = await ready();
+  const result = await client.execute(
+    "SELECT * FROM resumo_diario ORDER BY data DESC LIMIT 1"
+  );
+  const row = result.rows[0] as unknown as Record<string, unknown> | undefined;
+  if (!row) return undefined;
+
+  return {
+    ...row,
+    resumo_por_codigo: JSON.parse(row.resumo_por_codigo as string),
+    resumo_grupo2: JSON.parse(row.resumo_grupo2 as string),
+  } as ResumoDiario;
 }

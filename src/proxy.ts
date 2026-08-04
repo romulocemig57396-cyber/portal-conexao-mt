@@ -21,5 +21,7 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|icon.svg|login).*)"],
+  matcher: [
+    "/((?!api/auth|api/resumo-diario/atualizar|_next/static|_next/image|favicon.ico|icon.svg|login).*)",
+  ],
 };

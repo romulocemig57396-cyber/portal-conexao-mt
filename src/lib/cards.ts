@@ -68,6 +68,15 @@ export const cards: Card[] = [
     icone: "📋",
   },
   {
+    id: "resumo-diario",
+    titulo: "Resumo diário",
+    descricao: "Medidas pendentes por código e área",
+    categoria: "Acompanhamento",
+    tipo: "interno",
+    rota: "/resumo-diario",
+    icone: "🗒️",
+  },
+  {
     id: "mygrd",
     titulo: "MyGRD",
     descricao: "",
