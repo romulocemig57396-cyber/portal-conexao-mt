@@ -20,6 +20,7 @@ export function UsuariosTable({
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [nome, setNome] = useState("");
   const [papel, setPapel] = useState("colaborador");
+  const [dataNascimento, setDataNascimento] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
@@ -28,6 +29,7 @@ export function UsuariosTable({
     setEditandoId(usuario.id);
     setNome(usuario.nome);
     setPapel(usuario.papel);
+    setDataNascimento(usuario.data_nascimento ?? "");
     setNovaSenha("");
     setErro(null);
   }
@@ -60,6 +62,7 @@ export function UsuariosTable({
     const ok = await patch(id, {
       nome,
       papel,
+      dataNascimento,
       ...(novaSenha ? { novaSenha } : {}),
     });
     if (ok) setEditandoId(null);
@@ -86,7 +89,7 @@ export function UsuariosTable({
             <tr key={usuario.id} className="border-b border-cemig-card-border last:border-0">
               {editandoId === usuario.id ? (
                 <td colSpan={5} className="px-4 py-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
                     <input
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
@@ -101,6 +104,13 @@ export function UsuariosTable({
                       <option value="colaborador">Colaborador</option>
                       <option value="gestor">Gestor</option>
                     </select>
+                    <input
+                      value={dataNascimento}
+                      onChange={(e) => setDataNascimento(e.target.value)}
+                      type="date"
+                      title="Data de nascimento"
+                      className="rounded-md border border-cemig-card-border px-3 py-2 text-sm"
+                    />
                     <input
                       value={novaSenha}
                       onChange={(e) => setNovaSenha(e.target.value)}

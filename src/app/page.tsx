@@ -3,6 +3,7 @@ import { Header } from "@/components/Header";
 import { CardGrid } from "@/components/CardGrid";
 import { NoticiasSection } from "@/components/NoticiasSection";
 import { AvisosSection } from "@/components/AvisosSection";
+import { AniversariantesSection } from "@/components/AniversariantesSection";
 import { agruparPorCategoria, cardsParaPapel } from "@/lib/cards";
 
 export default async function HomePage() {
@@ -23,8 +24,9 @@ export default async function HomePage() {
               </div>
             </section>
           ))}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <AvisosSection />
+            <AniversariantesSection />
             <NoticiasSection />
           </div>
         </div>

@@ -22,6 +22,7 @@ export function NovoUsuarioForm() {
         usuario: formData.get("usuario"),
         senha: formData.get("senha"),
         papel: formData.get("papel"),
+        dataNascimento: formData.get("dataNascimento"),
       }),
     });
 
@@ -95,6 +96,17 @@ export function NovoUsuarioForm() {
             <option value="colaborador">Colaborador</option>
             <option value="gestor">Gestor</option>
           </select>
+        </div>
+        <div>
+          <label htmlFor="dataNascimento" className="block text-xs font-medium text-gray-700">
+            Data de nascimento
+          </label>
+          <input
+            id="dataNascimento"
+            name="dataNascimento"
+            type="date"
+            className="mt-1 w-full rounded-md border border-cemig-card-border bg-white px-3 py-2 text-sm"
+          />
         </div>
       </div>
 

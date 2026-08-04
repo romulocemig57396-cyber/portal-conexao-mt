@@ -13,6 +13,7 @@ import {
 } from "@/lib/db";
 
 const PAPEIS_VALIDOS: Papel[] = ["gestor", "colaborador"];
+const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 async function exigirGestor() {
   const session = await auth();
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
   const usuario = body?.usuario;
   const senha = body?.senha;
   const papel = body?.papel;
+  const dataNascimento = body?.dataNascimento;
 
   if (
     typeof nome !== "string" ||
@@ -59,6 +61,12 @@ export async function POST(request: Request) {
   if (typeof papel !== "string" || !PAPEIS_VALIDOS.includes(papel as Papel)) {
     return NextResponse.json({ error: "Papel inválido." }, { status: 400 });
   }
+  if (dataNascimento && (typeof dataNascimento !== "string" || !DATA_REGEX.test(dataNascimento))) {
+    return NextResponse.json(
+      { error: "Data de nascimento inválida." },
+      { status: 400 }
+    );
+  }
 
   if (await findUsuarioByLogin(usuario)) {
     return NextResponse.json({ error: "Login já existe." }, { status: 409 });
@@ -66,7 +74,13 @@ export async function POST(request: Request) {
 
   try {
     const senhaHash = bcrypt.hashSync(senha, 10);
-    const novoUsuario = await criarUsuario({ nome, usuario, senhaHash, papel: papel as Papel });
+    const novoUsuario = await criarUsuario({
+      nome,
+      usuario,
+      senhaHash,
+      papel: papel as Papel,
+      dataNascimento: dataNascimento || null,
+    });
     return NextResponse.json({ usuario: paraUsuarioPublico(novoUsuario) }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Login já existe." }, { status: 409 });
@@ -98,7 +112,11 @@ export async function PATCH(request: Request) {
     );
   }
 
-  if (body?.nome !== undefined || body?.papel !== undefined) {
+  if (
+    body?.nome !== undefined ||
+    body?.papel !== undefined ||
+    body?.dataNascimento !== undefined
+  ) {
     const nome = body?.nome !== undefined ? String(body.nome).trim() : undefined;
     if (nome !== undefined && !nome) {
       return NextResponse.json({ error: "Nome não pode ser vazio." }, { status: 400 });
@@ -110,7 +128,17 @@ export async function PATCH(request: Request) {
       }
       papel = body.papel;
     }
-    await atualizarUsuario(id, { nome, papel });
+    let dataNascimento: string | null | undefined;
+    if (body?.dataNascimento !== undefined) {
+      if (body.dataNascimento && !DATA_REGEX.test(body.dataNascimento)) {
+        return NextResponse.json(
+          { error: "Data de nascimento inválida." },
+          { status: 400 }
+        );
+      }
+      dataNascimento = body.dataNascimento || null;
+    }
+    await atualizarUsuario(id, { nome, papel, dataNascimento });
   }
 
   if (typeof body?.novaSenha === "string" && body.novaSenha) {

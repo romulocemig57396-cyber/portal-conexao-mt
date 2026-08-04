@@ -11,6 +11,7 @@ export interface Usuario {
   senha_hash: string;
   papel: Papel;
   ativo: boolean;
+  data_nascimento: string | null;
 }
 
 export type UsuarioPublico = Omit<Usuario, "senha_hash">;
@@ -22,8 +23,11 @@ export function paraUsuarioPublico(usuario: Usuario): UsuarioPublico {
     usuario: usuario.usuario,
     papel: usuario.papel,
     ativo: usuario.ativo,
+    data_nascimento: usuario.data_nascimento,
   };
 }
+
+export type Aniversariante = { nome: string; dia: number; mes: number };
 
 export interface SolicitacaoAusencia {
   id: number;
@@ -133,9 +137,12 @@ async function migrate(client: Client) {
   );
 
   const colunas = await client.execute("PRAGMA table_info(usuarios)");
-  const temAtivo = colunas.rows.some((r) => (r as unknown as { name: string }).name === "ativo");
-  if (!temAtivo) {
+  const nomesColunas = colunas.rows.map((r) => (r as unknown as { name: string }).name);
+  if (!nomesColunas.includes("ativo")) {
     await client.execute("ALTER TABLE usuarios ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!nomesColunas.includes("data_nascimento")) {
+    await client.execute("ALTER TABLE usuarios ADD COLUMN data_nascimento TEXT");
   }
 }
 
@@ -203,7 +210,7 @@ export async function atualizarSenhaUsuario(id: number, novaSenhaHash: string): 
 
 export async function atualizarUsuario(
   id: number,
-  data: { nome?: string; papel?: Papel }
+  data: { nome?: string; papel?: Papel; dataNascimento?: string | null }
 ): Promise<Usuario | undefined> {
   const client = await ready();
   if (data.nome !== undefined) {
@@ -216,6 +223,12 @@ export async function atualizarUsuario(
     await client.execute({
       sql: "UPDATE usuarios SET papel = ? WHERE id = ?",
       args: [data.papel, id],
+    });
+  }
+  if (data.dataNascimento !== undefined) {
+    await client.execute({
+      sql: "UPDATE usuarios SET data_nascimento = ? WHERE id = ?",
+      args: [data.dataNascimento, id],
     });
   }
   return findUsuarioById(id);
@@ -234,11 +247,12 @@ export async function criarUsuario(data: {
   usuario: string;
   senhaHash: string;
   papel: Papel;
+  dataNascimento?: string | null;
 }): Promise<Usuario> {
   const client = await ready();
   const result = await client.execute({
-    sql: "INSERT INTO usuarios (nome, usuario, senha_hash, papel) VALUES (?, ?, ?, ?)",
-    args: [data.nome, data.usuario, data.senhaHash, data.papel],
+    sql: "INSERT INTO usuarios (nome, usuario, senha_hash, papel, data_nascimento) VALUES (?, ?, ?, ?, ?)",
+    args: [data.nome, data.usuario, data.senhaHash, data.papel, data.dataNascimento ?? null],
   });
   return (await findUsuarioById(Number(result.lastInsertRowid)))!;
 }
@@ -445,4 +459,24 @@ export async function atualizarAtivoAviso(id: number, ativo: boolean): Promise<v
     sql: "UPDATE avisos SET ativo = ? WHERE id = ?",
     args: [ativo ? 1 : 0, id],
   });
+}
+
+// ---- aniversariantes ----
+
+export async function listAniversariantesDoMes(): Promise<Aniversariante[]> {
+  const client = await ready();
+  const result = await client.execute(
+    "SELECT nome, data_nascimento FROM usuarios WHERE ativo = 1 AND data_nascimento IS NOT NULL"
+  );
+
+  const mesAtual = new Date().getUTCMonth() + 1;
+
+  return result.rows
+    .map((row) => {
+      const r = row as unknown as { nome: string; data_nascimento: string };
+      const [, mesStr, diaStr] = r.data_nascimento.split("-");
+      return { nome: r.nome, mes: Number(mesStr), dia: Number(diaStr) };
+    })
+    .filter((a) => a.mes === mesAtual)
+    .sort((a, b) => a.dia - b.dia);
 }
