@@ -285,6 +285,15 @@ export async function listSolicitacoesPendentes(): Promise<SolicitacaoComUsuario
   );
 }
 
+export async function contarSolicitacoesPendentes(): Promise<number> {
+  const client = await ready();
+  const result = await client.execute(
+    "SELECT COUNT(*) AS total FROM solicitacoes_ausencia WHERE status = 'pendente'"
+  );
+  const row = result.rows[0] as unknown as { total: number | string };
+  return Number(row.total);
+}
+
 export async function listSolicitacoesPorUsuario(
   usuarioId: number
 ): Promise<SolicitacaoAusencia[]> {
