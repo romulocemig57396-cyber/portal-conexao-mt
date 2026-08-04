@@ -77,6 +77,15 @@ export const cards: Card[] = [
     icone: "📈",
   },
   {
+    id: "gdis",
+    titulo: "G-dis (Condis)",
+    descricao: "",
+    categoria: "Ferramentas",
+    tipo: "link",
+    url: process.env.NEXT_PUBLIC_GDIS_URL ?? "#",
+    icone: "🏗️",
+  },
+  {
     id: "orcamento-mt",
     titulo: "Orçamento MT",
     descricao: "Ferramenta de apoio na emissão de orçamentos",
