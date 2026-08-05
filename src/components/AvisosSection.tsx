@@ -6,7 +6,7 @@ export async function AvisosSection() {
   const avisos = await listAvisosAtivos();
 
   return (
-    <section>
+    <section id="avisos">
       <h2 className="text-lg font-semibold text-gray-900">Avisos</h2>
       <div className="mt-4 rounded-xl border border-cemig-card-border bg-cemig-card-bg">
         {avisos.length === 0 ? (

@@ -144,6 +144,9 @@ async function migrate(client: Client) {
   if (!nomesColunas.includes("data_nascimento")) {
     await client.execute("ALTER TABLE usuarios ADD COLUMN data_nascimento TEXT");
   }
+  if (!nomesColunas.includes("ultima_visita_home")) {
+    await client.execute("ALTER TABLE usuarios ADD COLUMN ultima_visita_home TEXT");
+  }
 }
 
 function getClient(): Client {
@@ -468,6 +471,38 @@ export async function atualizarAtivoAviso(id: number, ativo: boolean): Promise<v
     sql: "UPDATE avisos SET ativo = ? WHERE id = ?",
     args: [ativo ? 1 : 0, id],
   });
+}
+
+const EPOCH = "1970-01-01 00:00:00";
+
+/**
+ * Conta avisos ativos criados depois da última visita conhecida do usuário
+ * (calculado ANTES de atualizar o timestamp) e só então marca a visita como
+ * agora — mesma chamada faz as duas coisas, nessa ordem.
+ */
+export async function contarAvisosNaoLidosEMarcarVisita(usuarioId: number): Promise<number> {
+  const client = await ready();
+
+  const usuarioResult = await client.execute({
+    sql: "SELECT ultima_visita_home FROM usuarios WHERE id = ?",
+    args: [usuarioId],
+  });
+  const ultimaVisita =
+    (usuarioResult.rows[0] as unknown as { ultima_visita_home: string | null } | undefined)
+      ?.ultima_visita_home ?? EPOCH;
+
+  const contagemResult = await client.execute({
+    sql: "SELECT COUNT(*) AS total FROM avisos WHERE ativo = 1 AND criado_em > ?",
+    args: [ultimaVisita],
+  });
+  const contagem = Number((contagemResult.rows[0] as unknown as { total: number | string }).total);
+
+  await client.execute({
+    sql: "UPDATE usuarios SET ultima_visita_home = datetime('now') WHERE id = ?",
+    args: [usuarioId],
+  });
+
+  return contagem;
 }
 
 // ---- aniversariantes ----

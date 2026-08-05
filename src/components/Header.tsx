@@ -42,7 +42,21 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
             <p className="font-medium">{nome}</p>
             <p className="text-white/70">{PAPEL_LABEL[papel]}</p>
           </div>
-          {papel === "gestor" && <NotificacaoSino />}
+          <NotificacaoSino
+            endpoint="/api/avisos/nao-lidos"
+            href="/#avisos"
+            ariaLabelBase="aviso(s) novo(s) no mural"
+            titulo="Avisos do mural"
+            icone="📢"
+          />
+          {papel === "gestor" && (
+            <NotificacaoSino
+              endpoint="/api/solicitacoes/pendentes/contagem"
+              href="/calendario"
+              ariaLabelBase="solicitação(ões) de ausência pendente(s) de aprovação"
+              titulo="Solicitações pendentes de aprovação"
+            />
+          )}
           <Link
             href="/perfil"
             className="rounded-md border border-white/30 px-3 py-1.5 text-white/90 transition hover:bg-white/10"
