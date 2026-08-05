@@ -6,6 +6,7 @@ import { ClimaWidget } from "@/components/ClimaWidget";
 import { AniversariantesSection } from "@/components/AniversariantesSection";
 import { NotificacaoSino } from "@/components/NotificacaoSino";
 import { ProximoFeriadoChip } from "@/components/ProximoFeriadoChip";
+import { BandeiraTarifariaChip } from "@/components/BandeiraTarifariaChip";
 
 const PAPEL_LABEL: Record<Papel, string> = {
   gestor: "Gestor",
@@ -91,6 +92,7 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
         <ClimaWidget />
         <AniversariantesSection />
         <ProximoFeriadoChip />
+        <BandeiraTarifariaChip />
       </div>
     </header>
   );
