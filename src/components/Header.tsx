@@ -5,6 +5,7 @@ import { ssBroad } from "@/fonts/ss-broad";
 import { ClimaWidget } from "@/components/ClimaWidget";
 import { AniversariantesSection } from "@/components/AniversariantesSection";
 import { NotificacaoSino } from "@/components/NotificacaoSino";
+import { ProximoFeriadoChip } from "@/components/ProximoFeriadoChip";
 
 const PAPEL_LABEL: Record<Papel, string> = {
   gestor: "Gestor",
@@ -75,6 +76,7 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
       <div className="absolute right-4 top-full z-10 mt-2 space-y-2">
         <ClimaWidget />
         <AniversariantesSection />
+        <ProximoFeriadoChip />
       </div>
     </header>
   );
