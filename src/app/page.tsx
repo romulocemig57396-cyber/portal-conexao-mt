@@ -3,7 +3,6 @@ import { Header } from "@/components/Header";
 import { CardGrid } from "@/components/CardGrid";
 import { NoticiasSection } from "@/components/NoticiasSection";
 import { AvisosSection } from "@/components/AvisosSection";
-import { UltimosJogosSection } from "@/components/UltimosJogosSection";
 import { agruparPorCategoria, cardsParaPapel } from "@/lib/cards";
 
 export default async function HomePage() {
@@ -27,7 +26,6 @@ export default async function HomePage() {
           <div className="space-y-6">
             <AvisosSection />
             <NoticiasSection />
-            <UltimosJogosSection />
           </div>
         </div>
       </main>
