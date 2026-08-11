@@ -16,8 +16,7 @@ export default async function CalendarioPage() {
   const user = session!.user;
   const aprovadas = await listSolicitacoesAprovadas();
   const pendentes = user.papel === "gestor" ? await listSolicitacoesPendentes() : [];
-  const minhas =
-    user.papel === "colaborador" ? await listSolicitacoesPorUsuario(Number(user.id)) : [];
+  const minhas = await listSolicitacoesPorUsuario(Number(user.id));
 
   return (
     <>
@@ -36,16 +35,14 @@ export default async function CalendarioPage() {
           </div>
 
           <div className="space-y-6">
+            <NovaSolicitacaoForm />
             {user.papel === "colaborador" ? (
-              <>
-                <NovaSolicitacaoForm />
-                <div>
-                  <h2 className="mb-2 text-sm font-semibold text-gray-900">
-                    Minhas solicitações
-                  </h2>
-                  <MinhasSolicitacoes solicitacoes={minhas} />
-                </div>
-              </>
+              <div>
+                <h2 className="mb-2 text-sm font-semibold text-gray-900">
+                  Minhas solicitações
+                </h2>
+                <MinhasSolicitacoes solicitacoes={minhas} />
+              </div>
             ) : (
               <div className="space-y-6">
                 <div>
@@ -53,6 +50,12 @@ export default async function CalendarioPage() {
                     Solicitações pendentes
                   </h2>
                   <FilaAprovacao solicitacoes={pendentes} />
+                </div>
+                <div>
+                  <h2 className="mb-2 text-sm font-semibold text-gray-900">
+                    Minhas solicitações
+                  </h2>
+                  <MinhasSolicitacoes solicitacoes={minhas} />
                 </div>
                 <div>
                   <h2 className="mb-2 text-sm font-semibold text-gray-900">
