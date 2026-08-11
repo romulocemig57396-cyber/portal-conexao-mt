@@ -88,7 +88,7 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
         </div>
       </div>
 
-      <div className="hidden lg:absolute lg:right-4 lg:top-full lg:z-10 lg:mt-2 lg:block lg:space-y-2">
+      <div className="mx-auto flex max-w-6xl flex-wrap justify-end gap-2 px-4 pb-4">
         <ClimaWidget />
         <AniversariantesSection />
         <ProximoFeriadoChip />
