@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
+  atualizarNotaEvoluida,
   contarNotasPendentesPorTecnico,
+  contarNotasPendentesPorTecnicoEMedida,
   inserirNotasServico,
-  listNumerosNotaExistentes,
+  listNotasExistentesPorNumero,
   listUsuarios,
 } from "@/lib/db";
-import { cruzarRelatorios, distribuirNotas, parseRelatorio1, parseRelatorio2 } from "@/lib/notasServico";
+import {
+  MEDIDAS_ESPECIAIS,
+  cruzarRelatorios,
+  distribuirNotas,
+  escolherTecnicoParaMedidaEspecial,
+  parseRelatorio1,
+  parseRelatorio2,
+  type NotaCruzada,
+} from "@/lib/notasServico";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -38,15 +48,43 @@ export async function POST(request: Request) {
   const { notas, semCorrespondencia } = cruzarRelatorios(linhas, mapa);
 
   const numeros = notas.map((n) => n.numeroNota);
-  const existentes = await listNumerosNotaExistentes(numeros);
-  const novas = notas.filter((n) => !existentes.has(n.numeroNota));
+  const existentes = await listNotasExistentesPorNumero(numeros);
 
-  if (novas.length === 0) {
+  // Separa em: evolução de medida (mesma nota, medida especial nova), sem
+  // histórico (medida especial direto, nunca vista antes) e distribuição normal.
+  const evolucoes: NotaCruzada[] = [];
+  const semHistorico: NotaCruzada[] = [];
+  const normais: NotaCruzada[] = [];
+  let inalteradas = 0;
+
+  for (const nota of notas) {
+    const existente = existentes.get(nota.numeroNota);
+    if (!existente) {
+      if (MEDIDAS_ESPECIAIS.has(nota.medida)) {
+        semHistorico.push(nota);
+      } else {
+        normais.push(nota);
+      }
+      continue;
+    }
+    if (existente.medida === nota.medida) {
+      inalteradas++;
+      continue;
+    }
+    if (MEDIDAS_ESPECIAIS.has(nota.medida)) {
+      evolucoes.push(nota);
+    }
+    // Medida mudou mas não para uma medida especial: sem regra definida, não mexe.
+  }
+
+  const totalNovas = evolucoes.length + semHistorico.length + normais.length;
+  if (totalNovas === 0) {
     return NextResponse.json({
       totalLidas: notas.length,
       novas: 0,
-      jaExistentes: existentes.size,
+      jaExistentes: inalteradas,
       semCorrespondencia: semCorrespondencia.length,
+      evolucoes: 0,
       distribuicao: [],
     });
   }
@@ -63,34 +101,98 @@ export async function POST(request: Request) {
     );
   }
 
-  const pendentesIniciais = await contarNotasPendentesPorTecnico();
-  const atribuicoes = distribuirNotas(novas, tecnicosAtivos, pendentesIniciais);
+  const pendentesTotais = await contarNotasPendentesPorTecnico();
+  const pendentesPorMedida = new Map<string, Map<number, number>>();
+  for (const medida of MEDIDAS_ESPECIAIS) {
+    pendentesPorMedida.set(medida, await contarNotasPendentesPorTecnicoEMedida(medida));
+  }
 
-  await inserirNotasServico(
-    novas.map((n) => ({
-      numero_nota: n.numeroNota,
-      data_emissao: n.dataEmissao,
-      cidade: n.cidade,
-      regional: n.regional,
-      prazo: n.prazo,
-      medida: n.medida,
-      tipo_solicitacao: n.tipoSolicitacao,
-      tecnico_id: atribuicoes.get(n.numeroNota)!,
-    }))
-  );
+  const atribuicoesPorNumero = new Map<string, number>();
+
+  // 1) Evoluções de medida: rodízio com quem fez a etapa anterior (ou fallback).
+  for (const nota of evolucoes) {
+    const existente = existentes.get(nota.numeroNota)!;
+    const contagemMedida = pendentesPorMedida.get(nota.medida)!;
+    const escolhido = escolherTecnicoParaMedidaEspecial(
+      existente.tecnico_id,
+      tecnicosAtivos,
+      contagemMedida
+    );
+
+    if (existente.status === "pendente" && existente.tecnico_id !== null) {
+      pendentesTotais.set(
+        existente.tecnico_id,
+        Math.max(0, (pendentesTotais.get(existente.tecnico_id) ?? 0) - 1)
+      );
+    }
+    pendentesTotais.set(escolhido.id, (pendentesTotais.get(escolhido.id) ?? 0) + 1);
+    atribuicoesPorNumero.set(nota.numeroNota, escolhido.id);
+
+    await atualizarNotaEvoluida(nota.numeroNota, {
+      dataEmissao: nota.dataEmissao,
+      cidade: nota.cidade,
+      regional: nota.regional,
+      prazo: nota.prazo,
+      medida: nota.medida,
+      tipoSolicitacao: nota.tipoSolicitacao,
+      tecnicoId: escolhido.id,
+    });
+  }
+
+  // 2) Medida especial sem histórico: fallback por menor pendente da própria medida.
+  for (const nota of semHistorico) {
+    const contagemMedida = pendentesPorMedida.get(nota.medida)!;
+    const escolhido = escolherTecnicoParaMedidaEspecial(null, tecnicosAtivos, contagemMedida);
+    pendentesTotais.set(escolhido.id, (pendentesTotais.get(escolhido.id) ?? 0) + 1);
+    atribuicoesPorNumero.set(nota.numeroNota, escolhido.id);
+  }
+  if (semHistorico.length > 0) {
+    await inserirNotasServico(
+      semHistorico.map((n) => ({
+        numero_nota: n.numeroNota,
+        data_emissao: n.dataEmissao,
+        cidade: n.cidade,
+        regional: n.regional,
+        prazo: n.prazo,
+        medida: n.medida,
+        tipo_solicitacao: n.tipoSolicitacao,
+        tecnico_id: atribuicoesPorNumero.get(n.numeroNota)!,
+      }))
+    );
+  }
+
+  // 3) Distribuição normal (0019/0032/outras): equilíbrio por dia + tipo.
+  const atribuicoesNormais = distribuirNotas(normais, tecnicosAtivos, pendentesTotais);
+  for (const [numero, tecnicoId] of atribuicoesNormais) {
+    atribuicoesPorNumero.set(numero, tecnicoId);
+  }
+  if (normais.length > 0) {
+    await inserirNotasServico(
+      normais.map((n) => ({
+        numero_nota: n.numeroNota,
+        data_emissao: n.dataEmissao,
+        cidade: n.cidade,
+        regional: n.regional,
+        prazo: n.prazo,
+        medida: n.medida,
+        tipo_solicitacao: n.tipoSolicitacao,
+        tecnico_id: atribuicoesPorNumero.get(n.numeroNota)!,
+      }))
+    );
+  }
 
   const porTecnico = new Map<number, number>();
   for (const tecnico of tecnicosAtivos) porTecnico.set(tecnico.id, 0);
-  for (const nota of novas) {
-    const id = atribuicoes.get(nota.numeroNota);
-    if (id !== undefined) porTecnico.set(id, (porTecnico.get(id) ?? 0) + 1);
+  for (const tecnicoId of atribuicoesPorNumero.values()) {
+    porTecnico.set(tecnicoId, (porTecnico.get(tecnicoId) ?? 0) + 1);
   }
 
   return NextResponse.json({
     totalLidas: notas.length,
-    novas: novas.length,
-    jaExistentes: existentes.size,
+    novas: totalNovas,
+    jaExistentes: inalteradas,
     semCorrespondencia: semCorrespondencia.length,
+    evolucoes: evolucoes.length,
     distribuicao: tecnicosAtivos.map((t) => ({
       tecnicoId: t.id,
       nome: t.nome,

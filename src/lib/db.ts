@@ -540,17 +540,22 @@ export async function atualizarAtivoAviso(id: number, ativo: boolean): Promise<v
 
 // ---- notas_servico ----
 
-export async function listNumerosNotaExistentes(numeros: string[]): Promise<Set<string>> {
-  if (numeros.length === 0) return new Set();
+export async function listNotasExistentesPorNumero(
+  numeros: string[]
+): Promise<Map<string, NotaServico>> {
+  if (numeros.length === 0) return new Map();
   const client = await ready();
   const placeholders = numeros.map(() => "?").join(",");
   const result = await client.execute({
-    sql: `SELECT numero_nota FROM notas_servico WHERE numero_nota IN (${placeholders})`,
+    sql: `SELECT * FROM notas_servico WHERE numero_nota IN (${placeholders})`,
     args: numeros,
   });
-  return new Set(
-    result.rows.map((row) => (row as unknown as { numero_nota: string }).numero_nota)
-  );
+  const mapa = new Map<string, NotaServico>();
+  for (const row of result.rows) {
+    const nota = toPlain<NotaServico>(row as unknown as Record<string, unknown>);
+    mapa.set(nota.numero_nota, nota);
+  }
+  return mapa;
 }
 
 export async function contarNotasPendentesPorTecnico(): Promise<Map<number, number>> {
@@ -558,6 +563,22 @@ export async function contarNotasPendentesPorTecnico(): Promise<Map<number, numb
   const result = await client.execute(
     "SELECT tecnico_id, COUNT(*) AS total FROM notas_servico WHERE status = 'pendente' AND tecnico_id IS NOT NULL GROUP BY tecnico_id"
   );
+  const mapa = new Map<number, number>();
+  for (const row of result.rows) {
+    const r = row as unknown as { tecnico_id: number; total: number | string };
+    mapa.set(Number(r.tecnico_id), Number(r.total));
+  }
+  return mapa;
+}
+
+export async function contarNotasPendentesPorTecnicoEMedida(
+  medida: string
+): Promise<Map<number, number>> {
+  const client = await ready();
+  const result = await client.execute({
+    sql: "SELECT tecnico_id, COUNT(*) AS total FROM notas_servico WHERE status = 'pendente' AND medida = ? AND tecnico_id IS NOT NULL GROUP BY tecnico_id",
+    args: [medida],
+  });
   const mapa = new Map<number, number>();
   for (const row of result.rows) {
     const r = row as unknown as { tecnico_id: number; total: number | string };
@@ -640,6 +661,51 @@ export async function concluirNota(numero: string): Promise<void> {
   await client.execute({
     sql: "UPDATE notas_servico SET status = 'concluida', data_conclusao = datetime('now') WHERE numero_nota = ?",
     args: [numero],
+  });
+}
+
+/**
+ * Atualiza uma nota existente que evoluiu de medida (ex: 0019 -> 0020), voltando-a
+ * a 'pendente' para o novo técnico responsável — a nota em si não muda de número,
+ * só a etapa de trabalho.
+ */
+export async function atualizarNotaEvoluida(
+  numero: string,
+  data: {
+    dataEmissao: string;
+    cidade: string;
+    regional: string;
+    prazo: string;
+    medida: string;
+    tipoSolicitacao: TipoSolicitacaoNota;
+    tecnicoId: number;
+  }
+): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: `UPDATE notas_servico
+          SET data_emissao = ?, cidade = ?, regional = ?, prazo = ?, medida = ?, tipo_solicitacao = ?,
+              tecnico_id = ?, status = 'pendente', data_distribuicao = datetime('now'), data_conclusao = NULL
+          WHERE numero_nota = ?`,
+    args: [
+      data.dataEmissao,
+      data.cidade,
+      data.regional,
+      data.prazo,
+      data.medida,
+      data.tipoSolicitacao,
+      data.tecnicoId,
+      numero,
+    ],
+  });
+}
+
+/** Override manual do gestor: troca o técnico responsável sem mexer em status. */
+export async function reatribuirNota(numero: string, tecnicoId: number): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "UPDATE notas_servico SET tecnico_id = ? WHERE numero_nota = ?",
+    args: [tecnicoId, numero],
   });
 }
 

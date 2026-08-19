@@ -34,7 +34,10 @@ export default async function DistribuicaoNotasPage() {
           <div className="mt-6 space-y-6">
             <ProcessarLoteForm />
             <TecnicosAtivosToggle tecnicos={tecnicos} />
-            <NotasPorTecnico notas={notasPendentes} />
+            <NotasPorTecnico
+              notas={notasPendentes}
+              tecnicos={tecnicos.filter((t) => t.ativo)}
+            />
           </div>
         </main>
       </>

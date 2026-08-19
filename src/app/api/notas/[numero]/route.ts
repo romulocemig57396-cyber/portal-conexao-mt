@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { concluirNota, findNotaByNumero } from "@/lib/db";
+import { concluirNota, findNotaByNumero, findUsuarioById, reatribuirNota } from "@/lib/db";
 
 export async function PATCH(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ numero: string }> }
 ) {
   const session = await auth();
@@ -13,6 +13,23 @@ export async function PATCH(
   const nota = await findNotaByNumero(numero);
   if (!nota) {
     return NextResponse.json({ error: "Nota não encontrada." }, { status: 404 });
+  }
+
+  const body = await request.json().catch(() => null);
+
+  if (body && typeof body.tecnicoId === "number") {
+    if (session.user.papel !== "gestor") {
+      return NextResponse.json(
+        { error: "Apenas o gestor pode reatribuir uma nota." },
+        { status: 403 }
+      );
+    }
+    const tecnico = await findUsuarioById(body.tecnicoId);
+    if (!tecnico || tecnico.papel !== "colaborador") {
+      return NextResponse.json({ error: "Técnico inválido." }, { status: 400 });
+    }
+    await reatribuirNota(numero, body.tecnicoId);
+    return NextResponse.json({ ok: true });
   }
 
   const ehDono = nota.tecnico_id === Number(session.user.id);

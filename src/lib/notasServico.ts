@@ -13,6 +13,13 @@ export type NotaCruzada = LinhaRelatorio1 & { tipoSolicitacao: TipoSolicitacaoNo
 
 export type TecnicoDistribuicao = { id: number; nome: string };
 
+/**
+ * Medidas 0020 e 0021 não passam pela distribuição normal (por dia + tipo) — elas
+ * representam a evolução de uma nota que já existia com medida 0019 ou 0032, e
+ * seguem a regra de rodízio/fallback de {@link escolherTecnicoParaMedidaEspecial}.
+ */
+export const MEDIDAS_ESPECIAIS = new Set(["0020", "0021"]);
+
 function paraIso(dataBr: string): string {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(dataBr.trim());
   if (!m) throw new Error(`Data inválida: "${dataBr}"`);
@@ -108,6 +115,10 @@ export function cruzarRelatorios(
  * tiver, naquele instante, menos notas pendentes acumuladas — recalculado a cada
  * atribuição, não só uma vez. O contador de pendentes é compartilhado entre os dias
  * do lote, já que ele reflete o total acumulado no banco (não reseta por lote).
+ *
+ * O agrupamento é por dia + medida: uma medida nova (ex: 0032) segue exatamente a
+ * mesma regra, mas seu próprio equilíbrio por dia não se mistura com o de outra
+ * medida (ex: 0019) — cada uma é balanceada separadamente entre os técnicos.
  */
 export function distribuirNotas(
   notas: NotaCruzada[],
@@ -122,16 +133,17 @@ export function distribuirNotas(
     if (!pendentes.has(tecnico.id)) pendentes.set(tecnico.id, 0);
   }
 
-  const porDia = new Map<string, NotaCruzada[]>();
+  const porGrupo = new Map<string, NotaCruzada[]>();
   for (const nota of notas) {
-    const lista = porDia.get(nota.dataEmissao) ?? [];
+    const chave = `${nota.dataEmissao}|${nota.medida}`;
+    const lista = porGrupo.get(chave) ?? [];
     lista.push(nota);
-    porDia.set(nota.dataEmissao, lista);
+    porGrupo.set(chave, lista);
   }
 
-  const dias = [...porDia.keys()].sort();
-  for (const dia of dias) {
-    distribuirDia(porDia.get(dia)!, tecnicos, pendentes, atribuicoes);
+  const grupos = [...porGrupo.keys()].sort();
+  for (const grupo of grupos) {
+    distribuirDia(porGrupo.get(grupo)!, tecnicos, pendentes, atribuicoes);
   }
 
   return atribuicoes;
@@ -180,6 +192,46 @@ function distribuirDia(
     atribuicoes.set(nota.numeroNota, escolhido.id);
     pendentes.set(escolhido.id, menorCount + 1);
   }
+}
+
+/**
+ * Escolhe o técnico responsável por uma nota com medida especial (0020/0021).
+ *
+ * Regra de rodízio: se `tecnicoAnteriorId` (quem fez a etapa 0019/0032 daquela
+ * mesma nota) ainda está ativo, a nota vai para outro técnico ativo — o de menor
+ * contagem pendente para essa medida específica (desempate quando há mais de dois
+ * ativos). Se não há técnico anterior (nota sem histórico no sistema) ou ele não
+ * está mais ativo, cai no fallback: menor contagem pendente da própria medida
+ * entre todos os ativos — cada medida (0020 e 0021) usa sua própria contagem,
+ * nunca somadas.
+ *
+ * Muta `pendentesDaMedida` (soma 1 para o escolhido) para que atribuições
+ * seguintes, dentro do mesmo lote, já considerem essa escolha.
+ */
+export function escolherTecnicoParaMedidaEspecial(
+  tecnicoAnteriorId: number | null,
+  tecnicosAtivos: TecnicoDistribuicao[],
+  pendentesDaMedida: Map<number, number>
+): TecnicoDistribuicao {
+  const anteriorAtivo =
+    tecnicoAnteriorId !== null && tecnicosAtivos.some((t) => t.id === tecnicoAnteriorId);
+  const candidatos = anteriorAtivo
+    ? tecnicosAtivos.filter((t) => t.id !== tecnicoAnteriorId)
+    : tecnicosAtivos;
+  const pool = candidatos.length > 0 ? candidatos : tecnicosAtivos;
+
+  let escolhido = pool[0];
+  let menorCount = pendentesDaMedida.get(escolhido.id) ?? 0;
+  for (const tecnico of pool.slice(1)) {
+    const count = pendentesDaMedida.get(tecnico.id) ?? 0;
+    if (count < menorCount) {
+      escolhido = tecnico;
+      menorCount = count;
+    }
+  }
+
+  pendentesDaMedida.set(escolhido.id, menorCount + 1);
+  return escolhido;
 }
 
 export function linkSap(numeroNota: string): string {

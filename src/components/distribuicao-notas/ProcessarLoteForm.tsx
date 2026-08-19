@@ -8,6 +8,7 @@ type Resultado = {
   novas: number;
   jaExistentes: number;
   semCorrespondencia: number;
+  evolucoes: number;
   distribuicao: { tecnicoId: number; nome: string; quantidade: number }[];
 };
 
@@ -96,8 +97,9 @@ export function ProcessarLoteForm() {
       {resultado && (
         <div className="mt-4 rounded-md border border-cemig-card-border bg-white p-3 text-sm">
           <p className="text-gray-900">
-            {resultado.novas} nota(s) nova(s) distribuída(s) de {resultado.totalLidas} lida(s)
-            {resultado.jaExistentes > 0 && ` — ${resultado.jaExistentes} já cadastrada(s)`}
+            {resultado.novas} nota(s) processada(s) de {resultado.totalLidas} lida(s)
+            {resultado.evolucoes > 0 && ` — ${resultado.evolucoes} evolução(ões) de medida`}
+            {resultado.jaExistentes > 0 && ` — ${resultado.jaExistentes} sem alteração`}
             {resultado.semCorrespondencia > 0 &&
               ` — ${resultado.semCorrespondencia} sem correspondência no relatório 2 (tratada como AC)`}
             .

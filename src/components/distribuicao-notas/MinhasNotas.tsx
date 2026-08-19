@@ -47,6 +47,7 @@ export function MinhasNotas({ notas }: { notas: NotaServico[] }) {
             <th className="px-4 py-2 font-medium">Emissão</th>
             <th className="px-4 py-2 font-medium">Prazo</th>
             <th className="px-4 py-2 font-medium">Cidade</th>
+            <th className="px-4 py-2 font-medium">Medida</th>
             <th className="px-4 py-2 font-medium">Tipo</th>
             <th className="px-4 py-2 font-medium">SAP</th>
             <th className="px-4 py-2 font-medium">Ações</th>
@@ -59,6 +60,7 @@ export function MinhasNotas({ notas }: { notas: NotaServico[] }) {
               <td className="px-4 py-3 text-gray-600">{formatarDataBr(nota.data_emissao)}</td>
               <td className="px-4 py-3 text-gray-600">{formatarDataBr(nota.prazo)}</td>
               <td className="px-4 py-3 text-gray-600">{nota.cidade}</td>
+              <td className="px-4 py-3 text-gray-600">{nota.medida}</td>
               <td className="px-4 py-3 text-gray-600">{TIPO_LABEL[nota.tipo_solicitacao]}</td>
               <td className="px-4 py-3">
                 <a

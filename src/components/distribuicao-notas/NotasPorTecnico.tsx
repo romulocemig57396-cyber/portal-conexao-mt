@@ -1,5 +1,6 @@
 import type { NotaServicoComTecnico } from "@/lib/db";
 import { formatarDataBr, linkSap } from "@/lib/notasServico";
+import { ReatribuirTecnicoSelect } from "@/components/distribuicao-notas/ReatribuirTecnicoSelect";
 
 const TIPO_LABEL: Record<string, string> = {
   LN: "LN",
@@ -7,7 +8,13 @@ const TIPO_LABEL: Record<string, string> = {
   OU: "OU",
 };
 
-export function NotasPorTecnico({ notas }: { notas: NotaServicoComTecnico[] }) {
+export function NotasPorTecnico({
+  notas,
+  tecnicos,
+}: {
+  notas: NotaServicoComTecnico[];
+  tecnicos: { id: number; nome: string }[];
+}) {
   if (notas.length === 0) {
     return (
       <div className="rounded-xl border border-cemig-card-border bg-cemig-card-bg p-4">
@@ -30,6 +37,9 @@ export function NotasPorTecnico({ notas }: { notas: NotaServicoComTecnico[] }) {
       <h2 className="text-sm font-semibold text-gray-900">
         Notas pendentes por técnico ({notas.length} no total)
       </h2>
+      <p className="mt-1 text-xs text-gray-600">
+        Use o campo &quot;Responsável&quot; para reatribuir manualmente uma nota.
+      </p>
 
       <div className="mt-3 space-y-4">
         {[...grupos.entries()].map(([nome, notasDoTecnico]) => (
@@ -44,8 +54,10 @@ export function NotasPorTecnico({ notas }: { notas: NotaServicoComTecnico[] }) {
                   <th className="px-3 py-1.5 font-medium">Emissão</th>
                   <th className="px-3 py-1.5 font-medium">Prazo</th>
                   <th className="px-3 py-1.5 font-medium">Cidade</th>
+                  <th className="px-3 py-1.5 font-medium">Medida</th>
                   <th className="px-3 py-1.5 font-medium">Tipo</th>
                   <th className="px-3 py-1.5 font-medium">SAP</th>
+                  <th className="px-3 py-1.5 font-medium">Responsável</th>
                 </tr>
               </thead>
               <tbody>
@@ -55,6 +67,7 @@ export function NotasPorTecnico({ notas }: { notas: NotaServicoComTecnico[] }) {
                     <td className="px-3 py-1.5 text-gray-600">{formatarDataBr(nota.data_emissao)}</td>
                     <td className="px-3 py-1.5 text-gray-600">{formatarDataBr(nota.prazo)}</td>
                     <td className="px-3 py-1.5 text-gray-600">{nota.cidade}</td>
+                    <td className="px-3 py-1.5 text-gray-600">{nota.medida}</td>
                     <td className="px-3 py-1.5 text-gray-600">{TIPO_LABEL[nota.tipo_solicitacao]}</td>
                     <td className="px-3 py-1.5">
                       <a
@@ -65,6 +78,13 @@ export function NotasPorTecnico({ notas }: { notas: NotaServicoComTecnico[] }) {
                       >
                         Abrir no SAP
                       </a>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <ReatribuirTecnicoSelect
+                        numeroNota={nota.numero_nota}
+                        tecnicoAtualId={nota.tecnico_id}
+                        tecnicos={tecnicos}
+                      />
                     </td>
                   </tr>
                 ))}
