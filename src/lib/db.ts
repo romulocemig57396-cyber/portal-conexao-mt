@@ -12,6 +12,7 @@ export interface Usuario {
   papel: Papel;
   ativo: boolean;
   data_nascimento: string | null;
+  ativo_distribuicao: boolean;
 }
 
 export type UsuarioPublico = Omit<Usuario, "senha_hash">;
@@ -24,6 +25,7 @@ export function paraUsuarioPublico(usuario: Usuario): UsuarioPublico {
     papel: usuario.papel,
     ativo: usuario.ativo,
     data_nascimento: usuario.data_nascimento,
+    ativo_distribuicao: usuario.ativo_distribuicao,
   };
 }
 
@@ -62,6 +64,27 @@ export interface ResumoDiario {
   atualizado_em: string;
 }
 
+export type TipoSolicitacaoNota = "LN" | "AC" | "OU";
+export type StatusNota = "pendente" | "concluida";
+
+export interface NotaServico {
+  numero_nota: string;
+  data_emissao: string;
+  cidade: string;
+  regional: string;
+  prazo: string;
+  medida: string;
+  tipo_solicitacao: TipoSolicitacaoNota;
+  tecnico_id: number | null;
+  status: StatusNota;
+  data_distribuicao: string;
+  data_conclusao: string | null;
+}
+
+export interface NotaServicoComTecnico extends NotaServico {
+  tecnico_nome: string | null;
+}
+
 export interface Aviso {
   id: number;
   titulo: string;
@@ -85,7 +108,11 @@ function toPlain<T>(row: Record<string, unknown>): T {
 }
 
 function toUsuario(row: Record<string, unknown>): Usuario {
-  return { ...row, ativo: Boolean(row.ativo) } as Usuario;
+  return {
+    ...row,
+    ativo: Boolean(row.ativo),
+    ativo_distribuicao: Boolean(row.ativo_distribuicao),
+  } as Usuario;
 }
 
 function toAviso<T extends Aviso>(row: Record<string, unknown>): T {
@@ -132,6 +159,19 @@ async function migrate(client: Client) {
         criado_em TEXT NOT NULL DEFAULT (datetime('now')),
         ativo INTEGER NOT NULL DEFAULT 1
       )`,
+      `CREATE TABLE IF NOT EXISTS notas_servico (
+        numero_nota TEXT PRIMARY KEY,
+        data_emissao TEXT NOT NULL,
+        cidade TEXT NOT NULL,
+        regional TEXT NOT NULL,
+        prazo TEXT NOT NULL,
+        medida TEXT NOT NULL,
+        tipo_solicitacao TEXT NOT NULL CHECK (tipo_solicitacao IN ('LN', 'AC', 'OU')),
+        tecnico_id INTEGER REFERENCES usuarios(id),
+        status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluida')),
+        data_distribuicao TEXT NOT NULL DEFAULT (datetime('now')),
+        data_conclusao TEXT
+      )`,
     ],
     "write"
   );
@@ -146,6 +186,14 @@ async function migrate(client: Client) {
   }
   if (!nomesColunas.includes("ultima_visita_home")) {
     await client.execute("ALTER TABLE usuarios ADD COLUMN ultima_visita_home TEXT");
+  }
+  if (!nomesColunas.includes("ativo_distribuicao")) {
+    await client.execute(
+      "ALTER TABLE usuarios ADD COLUMN ativo_distribuicao INTEGER NOT NULL DEFAULT 0"
+    );
+    await client.execute(
+      "UPDATE usuarios SET ativo_distribuicao = 1 WHERE papel = 'colaborador' AND (nome LIKE 'Crisd%' OR nome LIKE 'Leticia%' OR nome LIKE 'Letícia%')"
+    );
   }
 }
 
@@ -241,6 +289,14 @@ export async function atualizarAtivoUsuario(id: number, ativo: boolean): Promise
   const client = await ready();
   await client.execute({
     sql: "UPDATE usuarios SET ativo = ? WHERE id = ?",
+    args: [ativo ? 1 : 0, id],
+  });
+}
+
+export async function atualizarAtivoDistribuicaoUsuario(id: number, ativo: boolean): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "UPDATE usuarios SET ativo_distribuicao = ? WHERE id = ?",
     args: [ativo ? 1 : 0, id],
   });
 }
@@ -470,6 +526,111 @@ export async function atualizarAtivoAviso(id: number, ativo: boolean): Promise<v
   await client.execute({
     sql: "UPDATE avisos SET ativo = ? WHERE id = ?",
     args: [ativo ? 1 : 0, id],
+  });
+}
+
+// ---- notas_servico ----
+
+export async function listNumerosNotaExistentes(numeros: string[]): Promise<Set<string>> {
+  if (numeros.length === 0) return new Set();
+  const client = await ready();
+  const placeholders = numeros.map(() => "?").join(",");
+  const result = await client.execute({
+    sql: `SELECT numero_nota FROM notas_servico WHERE numero_nota IN (${placeholders})`,
+    args: numeros,
+  });
+  return new Set(
+    result.rows.map((row) => (row as unknown as { numero_nota: string }).numero_nota)
+  );
+}
+
+export async function contarNotasPendentesPorTecnico(): Promise<Map<number, number>> {
+  const client = await ready();
+  const result = await client.execute(
+    "SELECT tecnico_id, COUNT(*) AS total FROM notas_servico WHERE status = 'pendente' AND tecnico_id IS NOT NULL GROUP BY tecnico_id"
+  );
+  const mapa = new Map<number, number>();
+  for (const row of result.rows) {
+    const r = row as unknown as { tecnico_id: number; total: number | string };
+    mapa.set(Number(r.tecnico_id), Number(r.total));
+  }
+  return mapa;
+}
+
+export async function inserirNotasServico(
+  notas: Array<{
+    numero_nota: string;
+    data_emissao: string;
+    cidade: string;
+    regional: string;
+    prazo: string;
+    medida: string;
+    tipo_solicitacao: TipoSolicitacaoNota;
+    tecnico_id: number;
+  }>
+): Promise<void> {
+  if (notas.length === 0) return;
+  const client = await ready();
+  await client.batch(
+    notas.map((n) => ({
+      sql: `INSERT INTO notas_servico
+              (numero_nota, data_emissao, cidade, regional, prazo, medida, tipo_solicitacao, tecnico_id, status, data_distribuicao)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente', datetime('now'))`,
+      args: [
+        n.numero_nota,
+        n.data_emissao,
+        n.cidade,
+        n.regional,
+        n.prazo,
+        n.medida,
+        n.tipo_solicitacao,
+        n.tecnico_id,
+      ],
+    })),
+    "write"
+  );
+}
+
+const SELECT_NOTA_COM_TECNICO = `
+  SELECT n.*, u.nome AS tecnico_nome
+  FROM notas_servico n
+  LEFT JOIN usuarios u ON u.id = n.tecnico_id
+`;
+
+export async function listNotasPendentesPorTecnico(tecnicoId: number): Promise<NotaServico[]> {
+  const client = await ready();
+  const result = await client.execute({
+    sql: "SELECT * FROM notas_servico WHERE tecnico_id = ? AND status = 'pendente' ORDER BY data_emissao, prazo",
+    args: [tecnicoId],
+  });
+  return result.rows.map((row) => toPlain<NotaServico>(row as unknown as Record<string, unknown>));
+}
+
+export async function listNotasPendentesAgrupadas(): Promise<NotaServicoComTecnico[]> {
+  const client = await ready();
+  const result = await client.execute(
+    `${SELECT_NOTA_COM_TECNICO} WHERE n.status = 'pendente' ORDER BY u.nome, n.data_emissao, n.prazo`
+  );
+  return result.rows.map((row) =>
+    toPlain<NotaServicoComTecnico>(row as unknown as Record<string, unknown>)
+  );
+}
+
+export async function findNotaByNumero(numero: string): Promise<NotaServico | undefined> {
+  const client = await ready();
+  const result = await client.execute({
+    sql: "SELECT * FROM notas_servico WHERE numero_nota = ?",
+    args: [numero],
+  });
+  const row = result.rows[0];
+  return row ? toPlain<NotaServico>(row as unknown as Record<string, unknown>) : undefined;
+}
+
+export async function concluirNota(numero: string): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "UPDATE notas_servico SET status = 'concluida', data_conclusao = datetime('now') WHERE numero_nota = ?",
+    args: [numero],
   });
 }
 

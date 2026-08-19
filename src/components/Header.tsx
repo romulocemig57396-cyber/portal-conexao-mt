@@ -88,7 +88,7 @@ export function Header({ nome, papel }: { nome: string; papel: Papel }) {
         </div>
       </div>
 
-      <div className="absolute right-4 top-full z-10 mt-2 space-y-2">
+      <div className="pointer-events-none absolute right-4 top-full z-10 mt-2 space-y-2">
         <ClimaWidget />
         <AniversariantesSection />
         <ProximoFeriadoChip />

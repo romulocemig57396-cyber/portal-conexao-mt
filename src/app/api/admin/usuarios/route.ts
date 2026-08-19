@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import {
+  atualizarAtivoDistribuicaoUsuario,
   atualizarAtivoUsuario,
   atualizarSenhaUsuario,
   atualizarUsuario,
@@ -154,6 +155,10 @@ export async function PATCH(request: Request) {
 
   if (typeof body?.ativo === "boolean") {
     await atualizarAtivoUsuario(id, body.ativo);
+  }
+
+  if (typeof body?.ativoDistribuicao === "boolean") {
+    await atualizarAtivoDistribuicaoUsuario(id, body.ativoDistribuicao);
   }
 
   const usuarios = await listUsuarios();

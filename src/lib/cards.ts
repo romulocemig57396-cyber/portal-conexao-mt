@@ -77,6 +77,15 @@ export const cards: Card[] = [
     icone: "🗒️",
   },
   {
+    id: "distribuicao-notas",
+    titulo: "Distribuição de Notas",
+    descricao: "Distribua e acompanhe notas de serviço entre os técnicos",
+    categoria: "Acompanhamento",
+    tipo: "interno",
+    rota: "/distribuicao-notas",
+    icone: "🧰",
+  },
+  {
     id: "mygrd",
     titulo: "MyGRD",
     descricao: "",
