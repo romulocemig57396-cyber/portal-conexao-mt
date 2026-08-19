@@ -381,12 +381,21 @@ export async function criarSolicitacao(data: {
   tipo: TipoAusencia;
   dataInicio: string;
   dataFim: string;
+  status?: "pendente" | "aprovada";
+  aprovadoPor?: number;
 }): Promise<SolicitacaoAusencia> {
   const client = await ready();
   const result = await client.execute({
-    sql: `INSERT INTO solicitacoes_ausencia (usuario_id, tipo, data_inicio, data_fim)
-          VALUES (?, ?, ?, ?)`,
-    args: [data.usuarioId, data.tipo, data.dataInicio, data.dataFim],
+    sql: `INSERT INTO solicitacoes_ausencia (usuario_id, tipo, data_inicio, data_fim, status, aprovado_por)
+          VALUES (?, ?, ?, ?, COALESCE(?, 'pendente'), ?)`,
+    args: [
+      data.usuarioId,
+      data.tipo,
+      data.dataInicio,
+      data.dataFim,
+      data.status ?? null,
+      data.aprovadoPor ?? null,
+    ],
   });
   return (await findSolicitacaoById(Number(result.lastInsertRowid)))!;
 }

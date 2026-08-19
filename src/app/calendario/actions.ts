@@ -32,11 +32,16 @@ export async function criarSolicitacaoAction(
     return { error: "A data final não pode ser anterior à data inicial." };
   }
 
+const souGestor = session.user.papel === "gestor";
+
   await criarSolicitacao({
     usuarioId: Number(session.user.id),
     tipo,
     dataInicio,
     dataFim,
+    ...(souGestor
+      ? { status: "aprovada" as const, aprovadoPor: Number(session.user.id) }
+      : {}),
   });
 
   revalidatePath("/calendario");
