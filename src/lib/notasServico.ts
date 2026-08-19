@@ -93,6 +93,19 @@ function traduzirTipo(codigo: string | undefined): TipoSolicitacaoNota {
   return "OU";
 }
 
+const TIPOS_VALIDOS = new Set<TipoSolicitacaoNota>(["LN", "AC", "OU"]);
+
+/**
+ * Igual a {@link traduzirTipo}, mas aceita também o tipo já traduzido (LN/AC/OU)
+ * diretamente — usado na carga manual, onde o gestor pode colar tanto o código
+ * bruto do relatório quanto o tipo já resolvido.
+ */
+function traduzirTipoEntrada(valor: string): TipoSolicitacaoNota {
+  const v = valor.trim().toUpperCase();
+  if (TIPOS_VALIDOS.has(v as TipoSolicitacaoNota)) return v as TipoSolicitacaoNota;
+  return traduzirTipo(valor);
+}
+
 export function cruzarRelatorios(
   linhas1: LinhaRelatorio1[],
   mapa2: Map<string, string>
@@ -232,6 +245,91 @@ export function escolherTecnicoParaMedidaEspecial(
 
   pendentesDaMedida.set(escolhido.id, menorCount + 1);
   return escolhido;
+}
+
+export type LinhaCargaInicial = LinhaRelatorio1 & {
+  tipoSolicitacao: TipoSolicitacaoNota;
+  responsavelNome: string;
+};
+
+/**
+ * Parser da carga manual de notas já em andamento (com responsável definido fora
+ * do algoritmo). Mesmas 6 colunas do relatório 1, mais tipo de solicitação (código
+ * bruto 5/vazio ou já traduzido LN/AC/OU) e o nome do técnico responsável.
+ */
+export function parseCargaInicial(texto: string): { linhas: LinhaCargaInicial[]; erros: string[] } {
+  const linhas: LinhaCargaInicial[] = [];
+  const erros: string[] = [];
+  const brutas = texto
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  brutas.forEach((linha, index) => {
+    const colunas = linha.split("\t").map((c) => c.trim());
+    if (colunas.length < 8) {
+      erros.push(`Linha ${index + 1}: esperado 8 colunas, encontrado ${colunas.length}.`);
+      return;
+    }
+    const [dataEmissaoBr, numeroNota, cidade, regional, prazoBr, medida, tipoCru, responsavelNome] =
+      colunas;
+    if (!numeroNota) {
+      erros.push(`Linha ${index + 1}: número da nota ausente.`);
+      return;
+    }
+    if (!responsavelNome) {
+      erros.push(`Linha ${index + 1}: responsável ausente.`);
+      return;
+    }
+    try {
+      linhas.push({
+        dataEmissao: paraIso(dataEmissaoBr),
+        numeroNota,
+        cidade,
+        regional,
+        prazo: paraIso(prazoBr),
+        medida,
+        tipoSolicitacao: traduzirTipoEntrada(tipoCru),
+        responsavelNome,
+      });
+    } catch {
+      erros.push(
+        `Linha ${index + 1}: data inválida ("${dataEmissaoBr}" ou "${prazoBr}"), esperado DD.MM.AAAA.`
+      );
+    }
+  });
+
+  return { linhas, erros };
+}
+
+const DIACRITICOS_REGEX = /[̀-ͯ]/g;
+
+function normalizarNome(nome: string): string {
+  return nome.normalize("NFD").replace(DIACRITICOS_REGEX, "").trim().toLowerCase();
+}
+
+/**
+ * Encontra o técnico correspondente a um nome digitado livremente: primeiro por
+ * nome completo (ignorando acentos/caixa), depois por prefixo (ex: "Crisdalhia"
+ * casando com "Crisdálhia Fernanda Hermes Soares"). Retorna `ambiguo: true` quando
+ * mais de um técnico bate com o nome informado.
+ */
+export function encontrarTecnicoPorNome(
+  nomeDigitado: string,
+  tecnicos: TecnicoDistribuicao[]
+): { tecnico: TecnicoDistribuicao | null; ambiguo: boolean } {
+  const alvo = normalizarNome(nomeDigitado);
+  if (!alvo) return { tecnico: null, ambiguo: false };
+
+  const exatos = tecnicos.filter((t) => normalizarNome(t.nome) === alvo);
+  if (exatos.length === 1) return { tecnico: exatos[0], ambiguo: false };
+  if (exatos.length > 1) return { tecnico: null, ambiguo: true };
+
+  const prefixados = tecnicos.filter((t) => normalizarNome(t.nome).startsWith(alvo));
+  if (prefixados.length === 1) return { tecnico: prefixados[0], ambiguo: false };
+  if (prefixados.length > 1) return { tecnico: null, ambiguo: true };
+
+  return { tecnico: null, ambiguo: false };
 }
 
 export function linkSap(numeroNota: string): string {

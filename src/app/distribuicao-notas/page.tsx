@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { Header } from "@/components/Header";
 import { ProcessarLoteForm } from "@/components/distribuicao-notas/ProcessarLoteForm";
@@ -26,10 +27,21 @@ export default async function DistribuicaoNotasPage() {
       <>
         <Header nome={user.name ?? user.id} papel={user.papel} />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-          <h1 className="text-xl font-semibold text-gray-900">Distribuição de Notas</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Cole os relatórios para distribuir novas notas de serviço entre os técnicos ativos.
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">Distribuição de Notas</h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Cole os relatórios para distribuir novas notas de serviço entre os técnicos
+                ativos.
+              </p>
+            </div>
+            <Link
+              href="/distribuicao-notas/carga-inicial"
+              className="shrink-0 rounded-md border border-cemig-card-border bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Adicionar nota com responsável
+            </Link>
+          </div>
 
           <div className="mt-6 space-y-6">
             <ProcessarLoteForm />
