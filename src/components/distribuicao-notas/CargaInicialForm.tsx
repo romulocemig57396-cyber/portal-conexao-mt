@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Resultado = {
@@ -84,6 +85,12 @@ export function CargaInicialForm() {
               ))}
             </ul>
           )}
+          <Link
+            href="/distribuicao-notas"
+            className="mt-3 inline-block rounded-md border border-cemig-card-border px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            ← Voltar para Distribuição de Notas
+          </Link>
         </div>
       )}
     </div>

@@ -646,6 +646,25 @@ export async function listNotasPendentesAgrupadas(): Promise<NotaServicoComTecni
   );
 }
 
+export async function listNotasConcluidasPorTecnico(tecnicoId: number): Promise<NotaServico[]> {
+  const client = await ready();
+  const result = await client.execute({
+    sql: "SELECT * FROM notas_servico WHERE tecnico_id = ? AND status = 'concluida' ORDER BY data_conclusao DESC",
+    args: [tecnicoId],
+  });
+  return result.rows.map((row) => toPlain<NotaServico>(row as unknown as Record<string, unknown>));
+}
+
+export async function listNotasConcluidasAgrupadas(): Promise<NotaServicoComTecnico[]> {
+  const client = await ready();
+  const result = await client.execute(
+    `${SELECT_NOTA_COM_TECNICO} WHERE n.status = 'concluida' ORDER BY u.nome, n.data_conclusao DESC`
+  );
+  return result.rows.map((row) =>
+    toPlain<NotaServicoComTecnico>(row as unknown as Record<string, unknown>)
+  );
+}
+
 export async function findNotaByNumero(numero: string): Promise<NotaServico | undefined> {
   const client = await ready();
   const result = await client.execute({
@@ -660,6 +679,15 @@ export async function concluirNota(numero: string): Promise<void> {
   const client = await ready();
   await client.execute({
     sql: "UPDATE notas_servico SET status = 'concluida', data_conclusao = datetime('now') WHERE numero_nota = ?",
+    args: [numero],
+  });
+}
+
+/** Reverte uma nota concluída para pendente — volta a contar nos pendentes do técnico. */
+export async function reabrirNota(numero: string): Promise<void> {
+  const client = await ready();
+  await client.execute({
+    sql: "UPDATE notas_servico SET status = 'pendente', data_conclusao = NULL WHERE numero_nota = ?",
     args: [numero],
   });
 }

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { concluirNota, findNotaByNumero, findUsuarioById, reatribuirNota } from "@/lib/db";
+import {
+  concluirNota,
+  findNotaByNumero,
+  findUsuarioById,
+  reabrirNota,
+  reatribuirNota,
+} from "@/lib/db";
 
 export async function PATCH(
   request: Request,
@@ -29,6 +35,20 @@ export async function PATCH(
       return NextResponse.json({ error: "Técnico inválido." }, { status: 400 });
     }
     await reatribuirNota(numero, body.tecnicoId);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body && body.status === "pendente") {
+    if (session.user.papel !== "gestor") {
+      return NextResponse.json(
+        { error: "Apenas o gestor pode reabrir uma nota." },
+        { status: 403 }
+      );
+    }
+    if (nota.status === "pendente") {
+      return NextResponse.json({ error: "Nota já está pendente." }, { status: 409 });
+    }
+    await reabrirNota(numero);
     return NextResponse.json({ ok: true });
   }
 

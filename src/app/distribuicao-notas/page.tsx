@@ -35,12 +35,20 @@ export default async function DistribuicaoNotasPage() {
                 ativos.
               </p>
             </div>
-            <Link
-              href="/distribuicao-notas/carga-inicial"
-              className="shrink-0 rounded-md border border-cemig-card-border bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Adicionar nota com responsável
-            </Link>
+            <div className="flex shrink-0 gap-2">
+              <Link
+                href="/distribuicao-notas/concluidas"
+                className="rounded-md border border-cemig-card-border bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Notas concluídas
+              </Link>
+              <Link
+                href="/distribuicao-notas/carga-inicial"
+                className="rounded-md border border-cemig-card-border bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Adicionar nota com responsável
+              </Link>
+            </div>
           </div>
 
           <div className="mt-6 space-y-6">
@@ -62,10 +70,20 @@ export default async function DistribuicaoNotasPage() {
     <>
       <Header nome={user.name ?? user.id} papel={user.papel} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        <h1 className="text-xl font-semibold text-gray-900">Minhas notas pendentes</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Notas de serviço distribuídas para você. Marque como concluída quando finalizar.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Minhas notas pendentes</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Notas de serviço distribuídas para você. Marque como concluída quando finalizar.
+            </p>
+          </div>
+          <Link
+            href="/distribuicao-notas/concluidas"
+            className="shrink-0 rounded-md border border-cemig-card-border bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Notas concluídas
+          </Link>
+        </div>
 
         <div className="mt-6">
           <MinhasNotas notas={minhasNotas} />
