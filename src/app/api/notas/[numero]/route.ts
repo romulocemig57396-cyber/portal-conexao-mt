@@ -31,7 +31,7 @@ export async function PATCH(
       );
     }
     const tecnico = await findUsuarioById(body.tecnicoId);
-    if (!tecnico || tecnico.papel !== "colaborador") {
+    if (!tecnico || !["colaborador", "gestor"].includes(tecnico.papel)) {
       return NextResponse.json({ error: "Técnico inválido." }, { status: 400 });
     }
     await reatribuirNota(numero, body.tecnicoId);
