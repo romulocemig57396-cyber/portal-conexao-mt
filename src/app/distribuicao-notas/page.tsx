@@ -19,7 +19,7 @@ export default async function DistribuicaoNotasPage() {
   if (user.papel === "gestor") {
     const usuarios = await listUsuarios();
     const tecnicos = usuarios
-      .filter((u) => u.papel === "colaborador")
+      .filter((u) => ["colaborador", "gestor"].includes(u.papel))
       .map(paraUsuarioPublico);
     const notasPendentes = await listNotasPendentesAgrupadas();
 
