@@ -38,6 +38,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/resumo-diario/atualizar|_next/static|_next/image|favicon.ico|icon.svg|login).*)",
+    "/((?!api/auth|api/resumo-diario/atualizar|api/painel-externo/atualizar|_next/static|_next/image|favicon.ico|icon.svg|login).*)",
   ],
 };

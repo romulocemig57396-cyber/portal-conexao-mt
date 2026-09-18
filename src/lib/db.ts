@@ -98,6 +98,77 @@ export interface AvisoComAutor extends Aviso {
   autor_nome: string;
 }
 
+// ---- painel externo (migrado do site estático do painelConexao) ----
+// Cada tabela é substituída por completo a cada ingestão (DELETE + INSERT
+// numa única transação) — são snapshots do estado atual, não séries que
+// acumulam ao longo do tempo; o painelConexao já manda o recorte completo
+// (ex: histórico inteiro desde a data mínima configurada) em cada push.
+
+export type PainelExternoGrafico = "aprovacao" | "liberacao" | "universalizacao";
+
+export interface PainelExternoHistoricoLinha {
+  grafico: PainelExternoGrafico;
+  mes: string;
+  servico: string;
+  mercado: string;
+  regional: string;
+  categoria: string;
+  quantidade: number;
+}
+
+export interface PainelExternoMedidaLinha {
+  grupo: string;
+  servico: string;
+  mercado: string;
+  regional: string;
+  codMedida: string;
+  situacao: string;
+  quantidade: number;
+}
+
+export interface PainelExternoInconsistenciaLinha {
+  tipo: string;
+  numNota: string;
+  codServico: string;
+  datCriacao: string;
+  codStatusUsuNota: string | null;
+  codMedida: string;
+  codStatUsu: string;
+}
+
+// Mesmas colunas de buscarOrcamentosEmitiveis (server/src/queries do
+// painelConexao), MENOS DES_ENDERECO_OBRA — só o endereço fica de fora,
+// por pedido explícito ("lista quase completa, só sem endereço").
+export interface PainelExternoOrcamentoEmitivelLinha {
+  numNota: string;
+  codServico: string;
+  desServico: string | null;
+  desObra: string | null;
+  regional: string | null;
+  localidade: string | null;
+  dataCriacaoNota: string | null;
+  codMedida: string;
+  codStatUsu: string;
+  dataCriacaoMedida: string | null;
+  dataVencimento: string | null;
+  itemAnexo: string | null;
+  prazoPadrao: string | null;
+  prazoReal: string | null;
+  gerExpResp: string | null;
+  tipoPrazo: string | null;
+  dataConclusaoReal: string | null;
+  codAreaResp: string | null;
+  desSituacao: string | null;
+}
+
+export interface PainelExternoCompleto {
+  atualizadoEm: string | null;
+  historico: PainelExternoHistoricoLinha[];
+  medidas: PainelExternoMedidaLinha[];
+  inconsistencias: PainelExternoInconsistenciaLinha[];
+  orcamentosEmitiveis: PainelExternoOrcamentoEmitivelLinha[];
+}
+
 declare global {
   var __portalDb: Client | undefined;
   var __portalDbReady: Promise<void> | undefined;
@@ -171,6 +242,65 @@ async function migrate(client: Client) {
         status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluida')),
         data_distribuicao TEXT NOT NULL DEFAULT (datetime('now')),
         data_conclusao TEXT
+      )`,
+      // Painel externo (migrado do site estático do painelConexao) — cada
+      // tabela é substituída por completo a cada ingestão, ver
+      // substituirPainelExterno().
+      `CREATE TABLE IF NOT EXISTS painel_externo_historico (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        grafico TEXT NOT NULL,
+        mes TEXT NOT NULL,
+        servico TEXT NOT NULL,
+        mercado TEXT NOT NULL,
+        regional TEXT NOT NULL,
+        categoria TEXT NOT NULL,
+        quantidade INTEGER NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS painel_externo_medidas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        grupo TEXT NOT NULL,
+        servico TEXT NOT NULL,
+        mercado TEXT NOT NULL,
+        regional TEXT NOT NULL,
+        cod_medida TEXT NOT NULL,
+        situacao TEXT NOT NULL,
+        quantidade INTEGER NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS painel_externo_inconsistencias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL,
+        num_nota TEXT NOT NULL,
+        cod_servico TEXT NOT NULL,
+        dat_criacao TEXT NOT NULL,
+        cod_status_usu_nota TEXT,
+        cod_medida TEXT NOT NULL,
+        cod_stat_usu TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS painel_externo_orcamentos_emitiveis (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        num_nota TEXT NOT NULL,
+        cod_servico TEXT NOT NULL,
+        des_servico TEXT,
+        des_obra TEXT,
+        regional TEXT,
+        localidade TEXT,
+        data_criacao_nota TEXT,
+        cod_medida TEXT NOT NULL,
+        cod_stat_usu TEXT NOT NULL,
+        data_criacao_medida TEXT,
+        data_vencimento TEXT,
+        item_anexo TEXT,
+        prazo_padrao TEXT,
+        prazo_real TEXT,
+        ger_exp_resp TEXT,
+        tipo_prazo TEXT,
+        data_conclusao_real TEXT,
+        cod_area_resp TEXT,
+        des_situacao TEXT
+      )`,
+      `CREATE TABLE IF NOT EXISTS painel_externo_metadata (
+        chave TEXT PRIMARY KEY,
+        atualizado_em TEXT NOT NULL
       )`,
     ],
     "write"
@@ -821,4 +951,153 @@ export async function listAniversariantesDoMes(): Promise<Aniversariante[]> {
     })
     .filter((a) => a.mes === mesAtual)
     .sort((a, b) => a.dia - b.dia);
+}
+
+// ---- painel externo ----
+
+/**
+ * Substitui por completo as 4 tabelas do painel externo numa única
+ * transação — se qualquer linha falhar (ex: payload malformado), a
+ * transação inteira é desfeita e os dados antigos continuam valendo, em vez
+ * de ficar com um recorte parcial/inconsistente.
+ */
+export async function substituirPainelExterno(data: {
+  historico: PainelExternoHistoricoLinha[];
+  medidas: PainelExternoMedidaLinha[];
+  inconsistencias: PainelExternoInconsistenciaLinha[];
+  orcamentosEmitiveis: PainelExternoOrcamentoEmitivelLinha[];
+}): Promise<void> {
+  const client = await ready();
+
+  const statements: Array<{ sql: string; args: (string | number | null)[] }> = [
+    { sql: "DELETE FROM painel_externo_historico", args: [] },
+    { sql: "DELETE FROM painel_externo_medidas", args: [] },
+    { sql: "DELETE FROM painel_externo_inconsistencias", args: [] },
+    { sql: "DELETE FROM painel_externo_orcamentos_emitiveis", args: [] },
+  ];
+
+  for (const h of data.historico) {
+    statements.push({
+      sql: `INSERT INTO painel_externo_historico
+              (grafico, mes, servico, mercado, regional, categoria, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [h.grafico, h.mes, h.servico, h.mercado, h.regional, h.categoria, h.quantidade],
+    });
+  }
+
+  for (const m of data.medidas) {
+    statements.push({
+      sql: `INSERT INTO painel_externo_medidas
+              (grupo, servico, mercado, regional, cod_medida, situacao, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [m.grupo, m.servico, m.mercado, m.regional, m.codMedida, m.situacao, m.quantidade],
+    });
+  }
+
+  for (const i of data.inconsistencias) {
+    statements.push({
+      sql: `INSERT INTO painel_externo_inconsistencias
+              (tipo, num_nota, cod_servico, dat_criacao, cod_status_usu_nota, cod_medida, cod_stat_usu)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        i.tipo,
+        i.numNota,
+        i.codServico,
+        i.datCriacao,
+        i.codStatusUsuNota ?? null,
+        i.codMedida,
+        i.codStatUsu,
+      ],
+    });
+  }
+
+  for (const o of data.orcamentosEmitiveis) {
+    statements.push({
+      sql: `INSERT INTO painel_externo_orcamentos_emitiveis
+              (num_nota, cod_servico, des_servico, des_obra, regional, localidade, data_criacao_nota,
+               cod_medida, cod_stat_usu, data_criacao_medida, data_vencimento, item_anexo, prazo_padrao,
+               prazo_real, ger_exp_resp, tipo_prazo, data_conclusao_real, cod_area_resp, des_situacao)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        o.numNota,
+        o.codServico,
+        o.desServico ?? null,
+        o.desObra ?? null,
+        o.regional ?? null,
+        o.localidade ?? null,
+        o.dataCriacaoNota ?? null,
+        o.codMedida,
+        o.codStatUsu,
+        o.dataCriacaoMedida ?? null,
+        o.dataVencimento ?? null,
+        o.itemAnexo ?? null,
+        o.prazoPadrao ?? null,
+        o.prazoReal ?? null,
+        o.gerExpResp ?? null,
+        o.tipoPrazo ?? null,
+        o.dataConclusaoReal ?? null,
+        o.codAreaResp ?? null,
+        o.desSituacao ?? null,
+      ],
+    });
+  }
+
+  statements.push({
+    sql: `INSERT INTO painel_externo_metadata (chave, atualizado_em)
+          VALUES ('ultima_atualizacao', datetime('now'))
+          ON CONFLICT(chave) DO UPDATE SET atualizado_em = excluded.atualizado_em`,
+    args: [],
+  });
+
+  await client.batch(statements, "write");
+}
+
+export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto> {
+  const client = await ready();
+
+  const [historico, medidas, inconsistencias, orcamentos, meta] = await Promise.all([
+    client.execute(
+      "SELECT grafico, mes, servico, mercado, regional, categoria, quantidade FROM painel_externo_historico"
+    ),
+    client.execute(
+      "SELECT grupo, servico, mercado, regional, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
+    ),
+    client.execute(
+      `SELECT tipo, num_nota AS numNota, cod_servico AS codServico, dat_criacao AS datCriacao,
+              cod_status_usu_nota AS codStatusUsuNota, cod_medida AS codMedida, cod_stat_usu AS codStatUsu
+       FROM painel_externo_inconsistencias`
+    ),
+    client.execute(
+      `SELECT num_nota AS numNota, cod_servico AS codServico, des_servico AS desServico, des_obra AS desObra,
+              regional, localidade, data_criacao_nota AS dataCriacaoNota, cod_medida AS codMedida,
+              cod_stat_usu AS codStatUsu, data_criacao_medida AS dataCriacaoMedida,
+              data_vencimento AS dataVencimento, item_anexo AS itemAnexo, prazo_padrao AS prazoPadrao,
+              prazo_real AS prazoReal, ger_exp_resp AS gerExpResp, tipo_prazo AS tipoPrazo,
+              data_conclusao_real AS dataConclusaoReal, cod_area_resp AS codAreaResp, des_situacao AS desSituacao
+       FROM painel_externo_orcamentos_emitiveis`
+    ),
+    client.execute({
+      sql: "SELECT atualizado_em FROM painel_externo_metadata WHERE chave = ?",
+      args: ["ultima_atualizacao"],
+    }),
+  ]);
+
+  return {
+    atualizadoEm:
+      (meta.rows[0] as unknown as { atualizado_em: string } | undefined)?.atualizado_em ?? null,
+    historico: historico.rows.map((row) => {
+      const r = row as unknown as PainelExternoHistoricoLinha;
+      return { ...r, quantidade: Number(r.quantidade) };
+    }),
+    medidas: medidas.rows.map((row) => {
+      const r = row as unknown as PainelExternoMedidaLinha;
+      return { ...r, quantidade: Number(r.quantidade) };
+    }),
+    inconsistencias: inconsistencias.rows.map((row) =>
+      toPlain<PainelExternoInconsistenciaLinha>(row as unknown as Record<string, unknown>)
+    ),
+    orcamentosEmitiveis: orcamentos.rows.map((row) =>
+      toPlain<PainelExternoOrcamentoEmitivelLinha>(row as unknown as Record<string, unknown>)
+    ),
+  };
 }
