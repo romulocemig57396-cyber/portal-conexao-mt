@@ -1,6 +1,6 @@
 import { createClient, type Client } from "@libsql/client";
 
-export type Papel = "gestor" | "colaborador";
+export type Papel = "gestor" | "colaborador" | "externo";
 export type TipoAusencia = "ferias" | "ausencia";
 export type StatusSolicitacao = "pendente" | "aprovada" | "recusada";
 
@@ -193,6 +193,40 @@ async function migrate(client: Client) {
     );
     await client.execute(
       "UPDATE usuarios SET ativo_distribuicao = 1 WHERE papel = 'colaborador' AND (nome LIKE 'Crisd%' OR nome LIKE 'Leticia%' OR nome LIKE 'Letícia%')"
+    );
+  }
+
+  // SQLite não permite alterar um CHECK existente via ALTER TABLE — a única
+  // forma de acrescentar 'externo' à lista de papéis é recriar a tabela.
+  // Detecta pelo texto do CHECK gravado no próprio schema (sqlite_master),
+  // então só recria uma vez, na primeira subida depois desta mudança.
+  const schemaUsuarios = await client.execute(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'usuarios'"
+  );
+  const sqlUsuarios =
+    (schemaUsuarios.rows[0] as unknown as { sql: string } | undefined)?.sql ?? "";
+  if (sqlUsuarios && !sqlUsuarios.includes("'externo'")) {
+    await client.batch(
+      [
+        `CREATE TABLE usuarios_novo (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nome TEXT NOT NULL,
+          usuario TEXT NOT NULL UNIQUE,
+          senha_hash TEXT NOT NULL,
+          papel TEXT NOT NULL CHECK (papel IN ('gestor', 'colaborador', 'externo')),
+          ativo INTEGER NOT NULL DEFAULT 1,
+          data_nascimento TEXT,
+          ultima_visita_home TEXT,
+          ativo_distribuicao INTEGER NOT NULL DEFAULT 0
+        )`,
+        `INSERT INTO usuarios_novo
+            (id, nome, usuario, senha_hash, papel, ativo, data_nascimento, ultima_visita_home, ativo_distribuicao)
+          SELECT id, nome, usuario, senha_hash, papel, ativo, data_nascimento, ultima_visita_home, ativo_distribuicao
+          FROM usuarios`,
+        "DROP TABLE usuarios",
+        "ALTER TABLE usuarios_novo RENAME TO usuarios",
+      ],
+      "write"
     );
   }
 }

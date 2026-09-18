@@ -13,7 +13,7 @@ import {
   type Papel,
 } from "@/lib/db";
 
-const PAPEIS_VALIDOS: Papel[] = ["gestor", "colaborador"];
+const PAPEIS_VALIDOS: Papel[] = ["gestor", "colaborador", "externo"];
 const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 async function exigirGestor() {

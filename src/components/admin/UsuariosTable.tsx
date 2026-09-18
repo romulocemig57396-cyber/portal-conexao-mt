@@ -7,6 +7,7 @@ import type { UsuarioPublico } from "@/lib/db";
 const PAPEL_LABEL: Record<string, string> = {
   gestor: "Gestor",
   colaborador: "Colaborador",
+  externo: "Externo",
 };
 
 export function UsuariosTable({
@@ -103,6 +104,7 @@ export function UsuariosTable({
                     >
                       <option value="colaborador">Colaborador</option>
                       <option value="gestor">Gestor</option>
+                      <option value="externo">Externo</option>
                     </select>
                     <input
                       value={dataNascimento}

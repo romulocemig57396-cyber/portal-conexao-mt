@@ -95,6 +95,7 @@ export function NovoUsuarioForm() {
           >
             <option value="colaborador">Colaborador</option>
             <option value="gestor">Gestor</option>
+            <option value="externo">Externo</option>
           </select>
         </div>
         <div>

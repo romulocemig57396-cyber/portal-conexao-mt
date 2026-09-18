@@ -11,6 +11,7 @@ import { BandeiraTarifariaChip } from "@/components/BandeiraTarifariaChip";
 const PAPEL_LABEL: Record<Papel, string> = {
   gestor: "Gestor",
   colaborador: "Colaborador",
+  externo: "Externo",
 };
 
 export function Header({ nome, papel }: { nome: string; papel: Papel }) {
