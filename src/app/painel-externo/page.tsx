@@ -1,15 +1,21 @@
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { auth, signOut } from "@/auth";
+import { getPainelExternoCompleto } from "@/lib/db";
+import { PainelExternoConteudo } from "@/components/painel-externo/PainelExternoConteudo";
 
 /**
- * Página do painel externo (papel "externo"). Ainda sem dados — só a base de
- * acesso restrito (login + bloqueio do resto do Portal em src/proxy.ts).
- * Cabeçalho próprio, minimalista, em vez de reaproveitar <Header/> — o
- * usuário externo não deve ver widgets/links de outras áreas do Portal
- * (aniversariantes, clima, link "voltar pra home" etc.).
+ * Página do painel externo (papel "externo", mas gestor/colaborador também
+ * acessam — só o papel externo é bloqueado do resto do Portal em
+ * src/proxy.ts). Cabeçalho próprio, minimalista, em vez de reaproveitar
+ * <Header/> — não deve expor widgets/links de outras áreas do Portal
+ * (aniversariantes, clima, link "voltar pra home" etc.) pra quem só devia
+ * ver este painel.
  */
 export default async function PainelExternoPage() {
   const session = await auth();
   const user = session!.user;
+  const dados = await getPainelExternoCompleto();
 
   return (
     <>
@@ -39,10 +45,15 @@ export default async function PainelExternoPage() {
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         <h1 className="text-xl font-semibold text-gray-900">Painel externo</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Em construção — Histórico, Medidas Pendentes, Inconsistências e Orçamentos
-          Emitíveis vão aparecer aqui.
+        <p className="mt-1 text-sm text-gray-600">
+          {dados.atualizadoEm
+            ? `Última atualização: ${format(new Date(`${dados.atualizadoEm}Z`), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}`
+            : "Aguardando o primeiro envio de dados do painel interno."}
         </p>
+
+        <div className="mt-6">
+          <PainelExternoConteudo dados={dados} />
+        </div>
       </main>
     </>
   );
