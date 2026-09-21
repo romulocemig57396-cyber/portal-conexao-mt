@@ -336,28 +336,42 @@ async function migrate(client: Client) {
   const sqlUsuarios =
     (schemaUsuarios.rows[0] as unknown as { sql: string } | undefined)?.sql ?? "";
   if (sqlUsuarios && !sqlUsuarios.includes("'externo'")) {
-    await client.batch(
-      [
-        `CREATE TABLE usuarios_novo (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nome TEXT NOT NULL,
-          usuario TEXT NOT NULL UNIQUE,
-          senha_hash TEXT NOT NULL,
-          papel TEXT NOT NULL CHECK (papel IN ('gestor', 'colaborador', 'externo')),
-          ativo INTEGER NOT NULL DEFAULT 1,
-          data_nascimento TEXT,
-          ultima_visita_home TEXT,
-          ativo_distribuicao INTEGER NOT NULL DEFAULT 0
-        )`,
-        `INSERT INTO usuarios_novo
-            (id, nome, usuario, senha_hash, papel, ativo, data_nascimento, ultima_visita_home, ativo_distribuicao)
-          SELECT id, nome, usuario, senha_hash, papel, ativo, data_nascimento, ultima_visita_home, ativo_distribuicao
-          FROM usuarios`,
-        "DROP TABLE usuarios",
-        "ALTER TABLE usuarios_novo RENAME TO usuarios",
-      ],
-      "write"
-    );
+    // solicitacoes_ausencia/avisos/notas_servico têm FK pra usuarios(id) — no
+    // Turso (diferente do SQLite local em arquivo, que não aplica FK por
+    // padrão) isso bloqueia o DROP TABLE abaixo com "FOREIGN KEY constraint
+    // failed" se a checagem estiver ligada. PRAGMA foreign_keys é um no-op
+    // dentro de uma transação (e client.batch("write") abre uma), então
+    // precisa ser um execute() isolado antes/depois do batch, nunca dentro
+    // dele. O DROP TABLE IF EXISTS cobre uma tentativa anterior que tenha
+    // falhado antes de chegar ao RENAME.
+    await client.execute("PRAGMA foreign_keys=OFF");
+    try {
+      await client.batch(
+        [
+          "DROP TABLE IF EXISTS usuarios_novo",
+          `CREATE TABLE usuarios_novo (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            usuario TEXT NOT NULL UNIQUE,
+            senha_hash TEXT NOT NULL,
+            papel TEXT NOT NULL CHECK (papel IN ('gestor', 'colaborador', 'externo')),
+            ativo INTEGER NOT NULL DEFAULT 1,
+            data_nascimento TEXT,
+            ultima_visita_home TEXT,
+            ativo_distribuicao INTEGER NOT NULL DEFAULT 0
+          )`,
+          `INSERT INTO usuarios_novo
+              (id, nome, usuario, senha_hash, papel, ativo, data_nascimento, ultima_visita_home, ativo_distribuicao)
+            SELECT id, nome, usuario, senha_hash, papel, ativo, data_nascimento, ultima_visita_home, ativo_distribuicao
+            FROM usuarios`,
+          "DROP TABLE usuarios",
+          "ALTER TABLE usuarios_novo RENAME TO usuarios",
+        ],
+        "write"
+      );
+    } finally {
+      await client.execute("PRAGMA foreign_keys=ON");
+    }
   }
 }
 
