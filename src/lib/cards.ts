@@ -57,6 +57,7 @@ export const cards: Card[] = [
     tipo: "interno",
     rota: "/calendario",
     icone: "🗓️",
+    papeis: ["gestor", "colaborador"],
   },
   {
     id: "servicos-regulatorios",
@@ -68,13 +69,13 @@ export const cards: Card[] = [
     icone: "📋",
   },
   {
-    id: "resumo-diario",
-    titulo: "Resumo diário",
-    descricao: "Medidas pendentes por código e área",
+    id: "painel-externo",
+    titulo: "Painel externo",
+    descricao: "Histórico, medidas, inconsistências e orçamentos emitíveis",
     categoria: "Acompanhamento",
     tipo: "interno",
-    rota: "/resumo-diario",
-    icone: "🗒️",
+    rota: "/painel-externo",
+    icone: "🌐",
   },
   {
     id: "distribuicao-notas",
@@ -84,6 +85,7 @@ export const cards: Card[] = [
     tipo: "interno",
     rota: "/distribuicao-notas",
     icone: "🧰",
+    papeis: ["gestor", "colaborador"],
   },
   {
     id: "mygrd",
@@ -309,15 +311,6 @@ export const cards: Card[] = [
     tipo: "link",
     url: process.env.NEXT_PUBLIC_COPILOT_URL ?? "#",
     icone: "🤖",
-  },
-  {
-    id: "claude",
-    titulo: "Claude",
-    descricao: "",
-    categoria: "Ferramentas IA",
-    tipo: "link",
-    url: process.env.NEXT_PUBLIC_CLAUDE_URL ?? "#",
-    icone: "✨",
   },
   {
     id: "agu",

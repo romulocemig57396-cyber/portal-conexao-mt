@@ -53,17 +53,6 @@ export type ResumoGraficoJson = {
   statusList: string[];
 };
 
-export interface ResumoDiario {
-  id: number;
-  data: string;
-  total_pendentes: number;
-  em_atraso: number;
-  areas_envolvidas: number;
-  resumo_por_codigo: ResumoGraficoJson;
-  resumo_grupo2: ResumoGraficoJson;
-  atualizado_em: string;
-}
-
 export type TipoSolicitacaoNota = "LN" | "AC" | "OU";
 export type StatusNota = "pendente" | "concluida";
 
@@ -632,21 +621,6 @@ export async function upsertResumoDiario(data: {
       JSON.stringify(data.resumoGrupo2),
     ],
   });
-}
-
-export async function getResumoMaisRecente(): Promise<ResumoDiario | undefined> {
-  const client = await ready();
-  const result = await client.execute(
-    "SELECT * FROM resumo_diario ORDER BY data DESC LIMIT 1"
-  );
-  const row = result.rows[0] as unknown as Record<string, unknown> | undefined;
-  if (!row) return undefined;
-
-  return {
-    ...row,
-    resumo_por_codigo: JSON.parse(row.resumo_por_codigo as string),
-    resumo_grupo2: JSON.parse(row.resumo_grupo2 as string),
-  } as ResumoDiario;
 }
 
 // ---- avisos ----

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
-import { findUsuarioByLogin } from "@/lib/db";
 
 export default async function LoginPage({
   searchParams,
@@ -12,20 +11,11 @@ export default async function LoginPage({
 
   async function autenticar(formData: FormData) {
     "use server";
-    let destinoOuErro: string;
     try {
-      // redirect: false em vez de redirectTo: "/" de propósito — com
-      // redirectTo, o signIn() já redireciona sozinho pra "/", e o
-      // middleware redireciona de novo pra /painel-externo pro papel
-      // externo; esse segundo redirecionamento encadeado (dentro do
-      // mecanismo de redirect de Server Action) não navegava de verdade no
-      // clique do botão (a sessão ficava gravada, só a tela não mudava).
-      // Resolvendo o papel aqui e chamando redirect() uma única vez evita
-      // esse encadeamento.
-      destinoOuErro = await signIn("credentials", {
+      await signIn("credentials", {
         usuario: formData.get("usuario"),
         senha: formData.get("senha"),
-        redirect: false,
+        redirectTo: "/",
       });
     } catch (err) {
       if (err instanceof AuthError) {
@@ -33,18 +23,6 @@ export default async function LoginPage({
       }
       throw err;
     }
-
-    if (destinoOuErro.includes("error=")) {
-      redirect("/login?error=credenciais");
-    }
-
-    // auth() logo após o signIn() acima não refletia o cookie recém-gravado
-    // dentro da mesma Server Action (testado com Playwright — caía em "/"
-    // mesmo pro papel externo); consulta direta ao banco não depende desse
-    // timing.
-    const usuario = String(formData.get("usuario") ?? "");
-    const usuarioLogado = await findUsuarioByLogin(usuario);
-    redirect(usuarioLogado?.papel === "externo" ? "/painel-externo" : "/");
   }
 
   return (

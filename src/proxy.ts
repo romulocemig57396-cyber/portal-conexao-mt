@@ -13,20 +13,11 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const papel = req.auth.user.papel;
 
-  // Papel "externo": só acessa o painel externo e as APIs dele — bloqueado
-  // de todo o resto do Portal (home, calendário, distribuição de notas,
-  // admin etc.). Checado antes do gate de admin abaixo pra ir direto ao
-  // destino certo, sem passar por um redirect intermediário pra "/".
-  const rotaPainelExterno =
-    pathname.startsWith("/painel-externo") || pathname.startsWith("/api/painel-externo");
-  if (papel === "externo") {
-    if (rotaPainelExterno) return undefined;
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Acesso restrito ao painel externo." }, { status: 403 });
-    }
-    return NextResponse.redirect(new URL("/painel-externo", req.url));
-  }
-
+  // O papel "externo" acessa o Portal como qualquer outro usuário — só não
+  // vê certos cards na home (Equipe, Distribuição de Notas, Gestão APRWEB),
+  // controlado em src/lib/cards.ts. Não há bloqueio de rota específico pra
+  // esse papel aqui; só o gate de admin abaixo, igual pra qualquer
+  // não-gestor.
   const rotaAdmin = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
   if (rotaAdmin && papel !== "gestor") {
     if (pathname.startsWith("/api/admin")) {
