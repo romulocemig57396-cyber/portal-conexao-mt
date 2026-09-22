@@ -4,20 +4,12 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { LabelProps } from "recharts";
 import type { PainelExternoMedidaLinha } from "@/lib/db";
+import { SITUACAO_META } from "@/lib/situacao";
 import { ChipFiltro } from "./ChipFiltro";
 
-// Situações regulatórias do grupo 1 (mesma paleta do painelConexao,
-// client/src/components/MedidasBarChart.jsx). O grupo 2 usa a situação
-// legada (DES_SITUACAO de TBL_MEDIDAS), com valores que variam por serviço —
-// por isso não tem paleta fixa, cor é atribuída dinamicamente por índice.
-const SITUACAO_GRUPO1: Record<string, { label: string; color: string }> = {
-  PENDENTES: { label: "Pendentes", color: "#4a3aa7" },
-  "EM ATRASO": { label: "Em atraso", color: "#a02b2b" },
-  "VENCE HOJE": { label: "Vence hoje", color: "#8a5a0b" },
-  "VENCE 7 DIAS": { label: "Vence em até 7 dias", color: "#2a78d6" },
-  "NO PRAZO": { label: "No prazo", color: "#2f9e6e" },
-  "SEM VENCIMENTO REGULATÓRIO": { label: "Sem vencimento regulatório", color: "#898781" },
-};
+// Grupo 2 usa a situação legada (DES_SITUACAO de TBL_MEDIDAS), com valores
+// que variam por serviço — por isso não tem paleta fixa, cor é atribuída
+// dinamicamente por índice.
 const PALETA_DINAMICA = ["#2a78d6", "#2f9e6e", "#8a5a0b", "#a02b2b", "#4a3aa7", "#3d9b3d", "#898781"];
 const COR_FALLBACK = "#898781";
 
@@ -102,7 +94,7 @@ function GraficoMedidas({
   );
 
   function corDaSituacao(situacao: string, index: number) {
-    return SITUACAO_GRUPO1[situacao]?.color ?? PALETA_DINAMICA[index % PALETA_DINAMICA.length] ?? COR_FALLBACK;
+    return SITUACAO_META[situacao]?.color ?? PALETA_DINAMICA[index % PALETA_DINAMICA.length] ?? COR_FALLBACK;
   }
 
   return (
@@ -130,7 +122,7 @@ function GraficoMedidas({
             <Tooltip cursor={{ fill: "rgba(30, 90, 75, 0.06)" }} />
             <Legend
               wrapperStyle={{ fontSize: 12, color: "#6B7280" }}
-              formatter={(value) => SITUACAO_GRUPO1[value as string]?.label ?? value}
+              formatter={(value) => SITUACAO_META[value as string]?.label ?? value}
             />
             {situacoes.map((situacao, index) => {
               const ultima = index === situacoes.length - 1;
