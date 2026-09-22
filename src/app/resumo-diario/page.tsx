@@ -1,10 +1,9 @@
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { auth } from "@/auth";
 import { Header } from "@/components/Header";
 import { ResumoMetricCards } from "@/components/resumo-diario/ResumoMetricCards";
 import { ResumoBarChart } from "@/components/resumo-diario/ResumoBarChart";
 import { getResumoMaisRecente } from "@/lib/db";
+import { formatarDataHoraBrasilia } from "@/lib/formatarDataHora";
 
 export default async function ResumoDiarioPage() {
   const session = await auth();
@@ -18,7 +17,7 @@ export default async function ResumoDiarioPage() {
         <h1 className="text-xl font-semibold text-gray-900">Resumo diário</h1>
         <p className="mt-1 text-sm text-gray-600">
           {resumo
-            ? `Última atualização: ${format(new Date(`${resumo.atualizado_em}Z`), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}`
+            ? `Última atualização: ${formatarDataHoraBrasilia(resumo.atualizado_em, "d 'de' MMMM 'às' HH:mm")}`
             : "Aguardando o primeiro envio de dados."}
         </p>
 

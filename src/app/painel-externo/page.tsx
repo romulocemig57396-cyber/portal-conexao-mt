@@ -1,6 +1,5 @@
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { auth, signOut } from "@/auth";
+import { formatarDataHoraBrasilia } from "@/lib/formatarDataHora";
 import { getPainelExternoCompleto } from "@/lib/db";
 import { PainelExternoConteudo } from "@/components/painel-externo/PainelExternoConteudo";
 
@@ -47,7 +46,7 @@ export default async function PainelExternoPage() {
         <h1 className="text-xl font-semibold text-gray-900">Painel externo</h1>
         <p className="mt-1 text-sm text-gray-600">
           {dados.atualizadoEm
-            ? `Última atualização: ${format(new Date(`${dados.atualizadoEm}Z`), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}`
+            ? `Última atualização: ${formatarDataHoraBrasilia(dados.atualizadoEm, "d 'de' MMMM 'às' HH:mm")}`
             : "Aguardando o primeiro envio de dados do painel interno."}
         </p>
 

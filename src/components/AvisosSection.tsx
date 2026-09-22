@@ -1,6 +1,5 @@
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { listAvisosAtivos } from "@/lib/db";
+import { formatarDataHoraBrasilia } from "@/lib/formatarDataHora";
 
 export async function AvisosSection() {
   const avisos = await listAvisosAtivos();
@@ -19,9 +18,7 @@ export async function AvisosSection() {
                 <p className="mt-1 text-sm text-gray-700">{aviso.mensagem}</p>
                 <p className="mt-1 text-xs text-gray-500">
                   {aviso.autor_nome} ·{" "}
-                  {format(new Date(`${aviso.criado_em}Z`), "d 'de' MMM 'às' HH:mm", {
-                    locale: ptBR,
-                  })}
+                  {formatarDataHoraBrasilia(aviso.criado_em, "d 'de' MMM 'às' HH:mm")}
                 </p>
               </li>
             ))}
