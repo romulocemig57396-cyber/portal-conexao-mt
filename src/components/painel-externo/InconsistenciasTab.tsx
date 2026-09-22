@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import type { PainelExternoInconsistenciaLinha } from "@/lib/db";
+import { montarUrlSap } from "@/lib/sapUrl";
 import { ChipFiltro } from "./ChipFiltro";
 
 function formatarData(valor: string | null) {
@@ -40,6 +41,7 @@ export function InconsistenciasTab({ linhas }: { linhas: PainelExternoInconsiste
                 <th className="px-4 py-2 font-medium">Status da nota</th>
                 <th className="px-4 py-2 font-medium">Medida</th>
                 <th className="px-4 py-2 font-medium">Status medida</th>
+                <th className="px-4 py-2 font-medium">SAP</th>
               </tr>
             </thead>
             <tbody>
@@ -52,6 +54,16 @@ export function InconsistenciasTab({ linhas }: { linhas: PainelExternoInconsiste
                   <td className="px-4 py-2 text-gray-600">{linha.codStatusUsuNota ?? "—"}</td>
                   <td className="px-4 py-2 text-gray-600">{linha.codMedida}</td>
                   <td className="px-4 py-2 text-gray-600">{linha.codStatUsu}</td>
+                  <td className="px-4 py-2">
+                    <a
+                      href={montarUrlSap(linha.numNota)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-cemig-badge hover:underline"
+                    >
+                      Abrir no SAP
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

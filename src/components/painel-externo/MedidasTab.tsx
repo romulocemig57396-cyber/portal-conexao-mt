@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { LabelProps } from "recharts";
 import type { PainelExternoMedidaLinha } from "@/lib/db";
 import { ChipFiltro } from "./ChipFiltro";
 
@@ -20,6 +21,10 @@ const SITUACAO_GRUPO1: Record<string, { label: string; color: string }> = {
 const PALETA_DINAMICA = ["#2a78d6", "#2f9e6e", "#8a5a0b", "#a02b2b", "#4a3aa7", "#3d9b3d", "#898781"];
 const COR_FALLBACK = "#898781";
 
+// Segmentos com menos de 5% do total da barra ficam sem rótulo (texto não
+// caberia) — mesmo critério do painelConexao (HistoricoStackedBarChart.jsx).
+const PERCENTUAL_MINIMO_ROTULO = 5;
+
 function agregarPorMedida(linhas: PainelExternoMedidaLinha[], grupo: string, servicos: string[], regionais: string[]) {
   const filtradas = linhas.filter(
     (l) => l.grupo === grupo && servicos.includes(l.servico) && regionais.includes(l.regional)
@@ -30,7 +35,50 @@ function agregarPorMedida(linhas: PainelExternoMedidaLinha[], grupo: string, ser
     const bucket = porMedida.get(l.codMedida)!;
     bucket[l.situacao] = (bucket[l.situacao] ?? 0) + l.quantidade;
   }
-  return [...porMedida.keys()].sort().map((codMedida) => ({ codMedida, ...porMedida.get(codMedida) }));
+  return [...porMedida.keys()].sort().map((codMedida) => {
+    const bruto = porMedida.get(codMedida)!;
+    const total = Object.values(bruto).reduce((soma, qtd) => soma + qtd, 0);
+    return { codMedida, _bruto: bruto, _total: total, ...bruto };
+  });
+}
+
+function calcularPercentualRotulo(situacao: string) {
+  return (entry: { payload?: { _bruto?: Record<string, number>; _total?: number } }) => {
+    const total = entry.payload?._total || 0;
+    if (!total) return 0;
+    return ((entry.payload?._bruto?.[situacao] || 0) / total) * 100;
+  };
+}
+
+function renderRotuloPercentual(props: LabelProps) {
+  const x = Number(props.x ?? 0);
+  const y = Number(props.y ?? 0);
+  const width = Number(props.width ?? 0);
+  const height = Number(props.height ?? 0);
+  const value = props.value == null ? null : Number(props.value);
+  if (value == null || Number.isNaN(value) || value < PERCENTUAL_MINIMO_ROTULO) return null;
+  return (
+    <text x={x + width / 2} y={y + height / 2} fill="#fff" textAnchor="middle" dominantBaseline="middle" fontSize={11} fontWeight={600} pointerEvents="none">
+      {`${Math.round(value)}%`}
+    </text>
+  );
+}
+
+function totalDaBarra(entry: { payload?: { _total?: number } }) {
+  return entry.payload?._total ?? 0;
+}
+
+function renderRotuloTotal(props: LabelProps) {
+  const x = Number(props.x ?? 0);
+  const y = Number(props.y ?? 0);
+  const width = Number(props.width ?? 0);
+  const value = props.value == null ? null : Number(props.value);
+  if (value == null || Number.isNaN(value)) return null;
+  return (
+    <text x={x + width / 2} y={y - 8} fill="#374151" textAnchor="middle" fontSize={11} fontWeight={600} pointerEvents="none">
+      {value.toLocaleString("pt-BR")}
+    </text>
+  );
 }
 
 function GraficoMedidas({
@@ -48,7 +96,8 @@ function GraficoMedidas({
 }) {
   const dados = useMemo(() => agregarPorMedida(linhas, grupo, servicos, regionais), [linhas, grupo, servicos, regionais]);
   const situacoes = useMemo(
-    () => [...new Set(dados.flatMap((d) => Object.keys(d).filter((k) => k !== "codMedida")))].sort(),
+    () =>
+      [...new Set(dados.flatMap((d) => Object.keys(d).filter((k) => !["codMedida", "_bruto", "_total"].includes(k))))].sort(),
     [dados]
   );
 
@@ -63,7 +112,7 @@ function GraficoMedidas({
         <p className="mt-4 text-sm text-gray-500">Nenhum dado para os filtros atuais.</p>
       ) : (
         <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={dados} barSize={24} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+          <BarChart data={dados} barSize={24} margin={{ top: 28, right: 16, left: 0, bottom: 8 }}>
             <CartesianGrid vertical={false} stroke="var(--cemig-card-border)" />
             <XAxis
               dataKey="codMedida"
@@ -83,18 +132,24 @@ function GraficoMedidas({
               wrapperStyle={{ fontSize: 12, color: "#6B7280" }}
               formatter={(value) => SITUACAO_GRUPO1[value as string]?.label ?? value}
             />
-            {situacoes.map((situacao, index) => (
-              <Bar
-                key={situacao}
-                dataKey={situacao}
-                name={situacao}
-                stackId="medidas"
-                fill={corDaSituacao(situacao, index)}
-                stroke="#fff"
-                strokeWidth={2}
-                radius={index === situacoes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-              />
-            ))}
+            {situacoes.map((situacao, index) => {
+              const ultima = index === situacoes.length - 1;
+              return (
+                <Bar
+                  key={situacao}
+                  dataKey={situacao}
+                  name={situacao}
+                  stackId="medidas"
+                  fill={corDaSituacao(situacao, index)}
+                  stroke="#fff"
+                  strokeWidth={2}
+                  radius={ultima ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                >
+                  <LabelList valueAccessor={calcularPercentualRotulo(situacao)} content={renderRotuloPercentual} />
+                  {ultima && <LabelList valueAccessor={totalDaBarra} content={renderRotuloTotal} />}
+                </Bar>
+              );
+            })}
           </BarChart>
         </ResponsiveContainer>
       )}

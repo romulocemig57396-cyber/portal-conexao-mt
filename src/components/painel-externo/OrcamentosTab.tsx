@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import type { PainelExternoOrcamentoEmitivelLinha } from "@/lib/db";
+import { montarUrlSap } from "@/lib/sapUrl";
 import { ChipFiltro } from "./ChipFiltro";
 
 function formatarData(valor: string | null) {
@@ -56,6 +57,7 @@ export function OrcamentosTab({ linhas }: { linhas: PainelExternoOrcamentoEmitiv
                 <th className="px-4 py-2 font-medium">Situação</th>
                 <th className="px-4 py-2 font-medium">Vencimento</th>
                 <th className="px-4 py-2 font-medium">Área resp.</th>
+                <th className="px-4 py-2 font-medium">SAP</th>
               </tr>
             </thead>
             <tbody>
@@ -77,6 +79,16 @@ export function OrcamentosTab({ linhas }: { linhas: PainelExternoOrcamentoEmitiv
                   <td className="px-4 py-2 text-gray-600">{linha.desSituacao ?? "—"}</td>
                   <td className="px-4 py-2 text-gray-600">{formatarData(linha.dataVencimento)}</td>
                   <td className="px-4 py-2 text-gray-600">{linha.codAreaResp ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    <a
+                      href={montarUrlSap(linha.numNota)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-cemig-badge hover:underline"
+                    >
+                      Abrir no SAP
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

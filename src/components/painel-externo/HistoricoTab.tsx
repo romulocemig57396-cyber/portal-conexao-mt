@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { LabelProps } from "recharts";
 import type { PainelExternoGrafico, PainelExternoHistoricoLinha } from "@/lib/db";
 import { ChipFiltro } from "./ChipFiltro";
 
@@ -34,6 +35,10 @@ const TITULOS: Record<PainelExternoGrafico, string> = {
   universalizacao: "Universalização de obras",
 };
 
+// Segmentos com menos de 5% do total do mês ficam sem rótulo (texto não
+// caberia) — mesmo critério do painelConexao (HistoricoStackedBarChart.jsx).
+const PERCENTUAL_MINIMO_ROTULO = 5;
+
 function agregarPorMes(
   linhas: PainelExternoHistoricoLinha[],
   grafico: PainelExternoGrafico,
@@ -54,7 +59,50 @@ function agregarPorMes(
     const bucket = porMes.get(l.mes)!;
     bucket[l.categoria] = (bucket[l.categoria] ?? 0) + l.quantidade;
   }
-  return [...porMes.keys()].sort().map((mes) => ({ mes, ...porMes.get(mes) }));
+  return [...porMes.keys()].sort().map((mes) => {
+    const bruto = porMes.get(mes)!;
+    const total = Object.values(bruto).reduce((soma, qtd) => soma + qtd, 0);
+    return { mes, _bruto: bruto, _total: total, ...bruto };
+  });
+}
+
+function calcularPercentualRotulo(catKey: string) {
+  return (entry: { payload?: { _bruto?: Record<string, number>; _total?: number } }) => {
+    const total = entry.payload?._total || 0;
+    if (!total) return 0;
+    return ((entry.payload?._bruto?.[catKey] || 0) / total) * 100;
+  };
+}
+
+function renderRotuloPercentual(props: LabelProps) {
+  const x = Number(props.x ?? 0);
+  const y = Number(props.y ?? 0);
+  const width = Number(props.width ?? 0);
+  const height = Number(props.height ?? 0);
+  const value = props.value == null ? null : Number(props.value);
+  if (value == null || Number.isNaN(value) || value < PERCENTUAL_MINIMO_ROTULO) return null;
+  return (
+    <text x={x + width / 2} y={y + height / 2} fill="#fff" textAnchor="middle" dominantBaseline="middle" fontSize={11} fontWeight={600} pointerEvents="none">
+      {`${Math.round(value)}%`}
+    </text>
+  );
+}
+
+function totalDoMes(entry: { payload?: { _total?: number } }) {
+  return entry.payload?._total ?? 0;
+}
+
+function renderRotuloTotal(props: LabelProps) {
+  const x = Number(props.x ?? 0);
+  const y = Number(props.y ?? 0);
+  const width = Number(props.width ?? 0);
+  const value = props.value == null ? null : Number(props.value);
+  if (value == null || Number.isNaN(value)) return null;
+  return (
+    <text x={x + width / 2} y={y - 8} fill="#374151" textAnchor="middle" fontSize={11} fontWeight={600} pointerEvents="none">
+      {value.toLocaleString("pt-BR")}
+    </text>
+  );
 }
 
 function GraficoHistorico({
@@ -83,7 +131,7 @@ function GraficoHistorico({
         <p className="mt-4 text-sm text-gray-500">Nenhum dado para os filtros atuais.</p>
       ) : (
         <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={dados} barSize={24} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+          <BarChart data={dados} barSize={24} margin={{ top: 28, right: 16, left: 0, bottom: 8 }}>
             <CartesianGrid vertical={false} stroke="var(--cemig-card-border)" />
             <XAxis
               dataKey="mes"
@@ -103,18 +151,24 @@ function GraficoHistorico({
               wrapperStyle={{ fontSize: 12, color: "#6B7280" }}
               formatter={(value) => categorias.find((c) => c.key === value)?.label ?? value}
             />
-            {categorias.map((cat, index) => (
-              <Bar
-                key={cat.key}
-                dataKey={cat.key}
-                name={cat.key}
-                stackId="hist"
-                fill={cat.color}
-                stroke="#fff"
-                strokeWidth={2}
-                radius={index === categorias.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-              />
-            ))}
+            {categorias.map((cat, index) => {
+              const ultima = index === categorias.length - 1;
+              return (
+                <Bar
+                  key={cat.key}
+                  dataKey={cat.key}
+                  name={cat.key}
+                  stackId="hist"
+                  fill={cat.color}
+                  stroke="#fff"
+                  strokeWidth={2}
+                  radius={ultima ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                >
+                  <LabelList valueAccessor={calcularPercentualRotulo(cat.key)} content={renderRotuloPercentual} />
+                  {ultima && <LabelList valueAccessor={totalDoMes} content={renderRotuloTotal} />}
+                </Bar>
+              );
+            })}
           </BarChart>
         </ResponsiveContainer>
       )}
