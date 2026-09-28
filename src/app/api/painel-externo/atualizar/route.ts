@@ -3,6 +3,7 @@ import {
   substituirPainelExterno,
   type PainelExternoHistoricoLinha,
   type PainelExternoMedidaLinha,
+  type PainelExternoMedida0070RegionalLinha,
   type PainelExternoInconsistenciaLinha,
   type PainelExternoOrcamentoEmitivelLinha,
 } from "@/lib/db";
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
   }
 
-  const { historico, medidas, inconsistencias, orcamentosEmitiveis } = body as Record<
+  const { historico, medidas, medida0070Regional, inconsistencias, orcamentosEmitiveis } = body as Record<
     string,
     unknown
   >;
@@ -32,13 +33,14 @@ export async function POST(request: Request) {
   if (
     !ehArrayDeObjetos(historico) ||
     !ehArrayDeObjetos(medidas) ||
+    !ehArrayDeObjetos(medida0070Regional) ||
     !ehArrayDeObjetos(inconsistencias) ||
     !ehArrayDeObjetos(orcamentosEmitiveis)
   ) {
     return NextResponse.json(
       {
         error:
-          "historico, medidas, inconsistencias e orcamentosEmitiveis devem ser arrays (podem ser vazios).",
+          "historico, medidas, medida0070Regional, inconsistencias e orcamentosEmitiveis devem ser arrays (podem ser vazios).",
       },
       { status: 400 }
     );
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
     await substituirPainelExterno({
       historico: historico as unknown as PainelExternoHistoricoLinha[],
       medidas: medidas as unknown as PainelExternoMedidaLinha[],
+      medida0070Regional: medida0070Regional as unknown as PainelExternoMedida0070RegionalLinha[],
       inconsistencias: inconsistencias as unknown as PainelExternoInconsistenciaLinha[],
       orcamentosEmitiveis: orcamentosEmitiveis as unknown as PainelExternoOrcamentoEmitivelLinha[],
     });

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { LabelProps } from "recharts";
-import type { PainelExternoMedidaLinha } from "@/lib/db";
+import type { PainelExternoMedidaLinha, PainelExternoMedida0070RegionalLinha } from "@/lib/db";
 import { SITUACAO_META } from "@/lib/situacao";
 import { ChipFiltro } from "./ChipFiltro";
 
@@ -70,6 +70,93 @@ function renderRotuloTotal(props: LabelProps) {
     <text x={x + width / 2} y={y - 8} fill="#374151" textAnchor="middle" fontSize={11} fontWeight={600} pointerEvents="none">
       {value.toLocaleString("pt-BR")}
     </text>
+  );
+}
+
+function agregarPorRegional(linhas: PainelExternoMedida0070RegionalLinha[], servicos: string[], regionais: string[]) {
+  const filtradas = linhas.filter((l) => servicos.includes(l.servico) && regionais.includes(l.regional));
+  const porRegional = new Map<string, Record<string, number>>();
+  for (const l of filtradas) {
+    if (!porRegional.has(l.regional)) porRegional.set(l.regional, {});
+    const bucket = porRegional.get(l.regional)!;
+    bucket[l.situacao] = (bucket[l.situacao] ?? 0) + l.quantidade;
+  }
+  return [...porRegional.keys()].sort().map((regional) => {
+    const bruto = porRegional.get(regional)!;
+    const total = Object.values(bruto).reduce((soma, qtd) => soma + qtd, 0);
+    return { regional, _bruto: bruto, _total: total, ...bruto };
+  });
+}
+
+function GraficoMedida0070Regional({
+  linhas,
+  servicos,
+  regionais,
+}: {
+  linhas: PainelExternoMedida0070RegionalLinha[];
+  servicos: string[];
+  regionais: string[];
+}) {
+  const dados = useMemo(() => agregarPorRegional(linhas, servicos, regionais), [linhas, servicos, regionais]);
+  const situacoes = useMemo(
+    () =>
+      [...new Set(dados.flatMap((d) => Object.keys(d).filter((k) => !["regional", "_bruto", "_total"].includes(k))))].sort(),
+    [dados]
+  );
+
+  function corDaSituacao(situacao: string, index: number) {
+    return SITUACAO_META[situacao]?.color ?? PALETA_DINAMICA[index % PALETA_DINAMICA.length] ?? COR_FALLBACK;
+  }
+
+  return (
+    <section className="rounded-xl border border-cemig-card-border bg-cemig-card-bg p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-gray-900">Medida 0070 por Regional</h2>
+      {!dados.length ? (
+        <p className="mt-4 text-sm text-gray-500">Nenhum dado para os filtros atuais.</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={dados} barSize={24} margin={{ top: 28, right: 16, left: 0, bottom: 8 }}>
+            <CartesianGrid vertical={false} stroke="var(--cemig-card-border)" />
+            <XAxis
+              dataKey="regional"
+              tick={{ fill: "#6B7280", fontSize: 12 }}
+              axisLine={{ stroke: "var(--cemig-card-border)" }}
+              tickLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fill: "#6B7280", fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              width={40}
+            />
+            <Tooltip cursor={{ fill: "rgba(30, 90, 75, 0.06)" }} />
+            <Legend
+              wrapperStyle={{ fontSize: 12, color: "#6B7280" }}
+              formatter={(value) => SITUACAO_META[value as string]?.label ?? value}
+            />
+            {situacoes.map((situacao, index) => {
+              const ultima = index === situacoes.length - 1;
+              return (
+                <Bar
+                  key={situacao}
+                  dataKey={situacao}
+                  name={situacao}
+                  stackId="medida0070"
+                  fill={corDaSituacao(situacao, index)}
+                  stroke="#fff"
+                  strokeWidth={2}
+                  radius={ultima ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                >
+                  <LabelList valueAccessor={calcularPercentualRotulo(situacao)} content={renderRotuloPercentual} />
+                  {ultima && <LabelList valueAccessor={totalDaBarra} content={renderRotuloTotal} />}
+                </Bar>
+              );
+            })}
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </section>
   );
 }
 
@@ -149,14 +236,26 @@ function GraficoMedidas({
   );
 }
 
-export function MedidasTab({ linhas }: { linhas: PainelExternoMedidaLinha[] }) {
-  const servicosDisponiveis = useMemo(() => [...new Set(linhas.map((l) => l.servico))].sort(), [linhas]);
-  const regionaisDisponiveis = useMemo(() => [...new Set(linhas.map((l) => l.regional))].sort(), [linhas]);
+export function MedidasTab({
+  linhas,
+  medida0070Regional,
+}: {
+  linhas: PainelExternoMedidaLinha[];
+  medida0070Regional: PainelExternoMedida0070RegionalLinha[];
+}) {
+  const servicosDisponiveis = useMemo(
+    () => [...new Set([...linhas.map((l) => l.servico), ...medida0070Regional.map((l) => l.servico)])].sort(),
+    [linhas, medida0070Regional]
+  );
+  const regionaisDisponiveis = useMemo(
+    () => [...new Set([...linhas.map((l) => l.regional), ...medida0070Regional.map((l) => l.regional)])].sort(),
+    [linhas, medida0070Regional]
+  );
 
   const [servicos, setServicos] = useState<string[]>(servicosDisponiveis);
   const [regionais, setRegionais] = useState<string[]>(regionaisDisponiveis);
 
-  if (!linhas.length) {
+  if (!linhas.length && !medida0070Regional.length) {
     return <p className="text-sm text-gray-500">Nenhum dado de medidas disponível ainda.</p>;
   }
 
@@ -173,6 +272,7 @@ export function MedidasTab({ linhas }: { linhas: PainelExternoMedidaLinha[] }) {
         servicos={servicos}
         regionais={regionais}
       />
+      <GraficoMedida0070Regional linhas={medida0070Regional} servicos={servicos} regionais={regionais} />
       <GraficoMedidas
         titulo="Medidas pendentes — Áreas envolvidas"
         linhas={linhas}

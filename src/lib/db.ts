@@ -115,6 +115,13 @@ export interface PainelExternoMedidaLinha {
   quantidade: number;
 }
 
+export interface PainelExternoMedida0070RegionalLinha {
+  servico: string;
+  regional: string;
+  situacao: string;
+  quantidade: number;
+}
+
 export interface PainelExternoInconsistenciaLinha {
   tipo: string;
   numNota: string;
@@ -154,6 +161,7 @@ export interface PainelExternoCompleto {
   atualizadoEm: string | null;
   historico: PainelExternoHistoricoLinha[];
   medidas: PainelExternoMedidaLinha[];
+  medida0070Regional: PainelExternoMedida0070RegionalLinha[];
   inconsistencias: PainelExternoInconsistenciaLinha[];
   orcamentosEmitiveis: PainelExternoOrcamentoEmitivelLinha[];
 }
@@ -252,6 +260,13 @@ async function migrate(client: Client) {
         mercado TEXT NOT NULL,
         regional TEXT NOT NULL,
         cod_medida TEXT NOT NULL,
+        situacao TEXT NOT NULL,
+        quantidade INTEGER NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS painel_externo_medida_0070_regional (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        servico TEXT NOT NULL,
+        regional TEXT NOT NULL,
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
       )`,
@@ -952,6 +967,7 @@ export async function listAniversariantesDoMes(): Promise<Aniversariante[]> {
 export async function substituirPainelExterno(data: {
   historico: PainelExternoHistoricoLinha[];
   medidas: PainelExternoMedidaLinha[];
+  medida0070Regional: PainelExternoMedida0070RegionalLinha[];
   inconsistencias: PainelExternoInconsistenciaLinha[];
   orcamentosEmitiveis: PainelExternoOrcamentoEmitivelLinha[];
 }): Promise<void> {
@@ -960,6 +976,7 @@ export async function substituirPainelExterno(data: {
   const statements: Array<{ sql: string; args: (string | number | null)[] }> = [
     { sql: "DELETE FROM painel_externo_historico", args: [] },
     { sql: "DELETE FROM painel_externo_medidas", args: [] },
+    { sql: "DELETE FROM painel_externo_medida_0070_regional", args: [] },
     { sql: "DELETE FROM painel_externo_inconsistencias", args: [] },
     { sql: "DELETE FROM painel_externo_orcamentos_emitiveis", args: [] },
   ];
@@ -979,6 +996,15 @@ export async function substituirPainelExterno(data: {
               (grupo, servico, mercado, regional, cod_medida, situacao, quantidade)
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
       args: [m.grupo, m.servico, m.mercado, m.regional, m.codMedida, m.situacao, m.quantidade],
+    });
+  }
+
+  for (const r of data.medida0070Regional) {
+    statements.push({
+      sql: `INSERT INTO painel_externo_medida_0070_regional
+              (servico, regional, situacao, quantidade)
+            VALUES (?, ?, ?, ?)`,
+      args: [r.servico, r.regional, r.situacao, r.quantidade],
     });
   }
 
@@ -1043,12 +1069,15 @@ export async function substituirPainelExterno(data: {
 export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto> {
   const client = await ready();
 
-  const [historico, medidas, inconsistencias, orcamentos, meta] = await Promise.all([
+  const [historico, medidas, medida0070Regional, inconsistencias, orcamentos, meta] = await Promise.all([
     client.execute(
       "SELECT grafico, mes, servico, mercado, regional, categoria, quantidade FROM painel_externo_historico"
     ),
     client.execute(
       "SELECT grupo, servico, mercado, regional, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
+    ),
+    client.execute(
+      "SELECT servico, regional, situacao, quantidade FROM painel_externo_medida_0070_regional"
     ),
     client.execute(
       `SELECT tipo, num_nota AS numNota, cod_servico AS codServico, dat_criacao AS datCriacao,
@@ -1079,6 +1108,10 @@ export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto>
     }),
     medidas: medidas.rows.map((row) => {
       const r = row as unknown as PainelExternoMedidaLinha;
+      return { ...r, quantidade: Number(r.quantidade) };
+    }),
+    medida0070Regional: medida0070Regional.rows.map((row) => {
+      const r = row as unknown as PainelExternoMedida0070RegionalLinha;
       return { ...r, quantidade: Number(r.quantidade) };
     }),
     inconsistencias: inconsistencias.rows.map((row) =>

@@ -25,6 +25,9 @@ export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto 
   const [modoApresentacao, setModoApresentacao] = useState(false);
 
   const medidas = modoApresentacao ? dados.medidas.filter((m) => m.situacao !== "EM ATRASO") : dados.medidas;
+  const medida0070Regional = modoApresentacao
+    ? dados.medida0070Regional.filter((r) => r.situacao !== "EM ATRASO")
+    : dados.medida0070Regional;
   const orcamentosEmitiveis = modoApresentacao
     ? dados.orcamentosEmitiveis.filter((o) => o.desSituacao !== "EM ATRASO")
     : dados.orcamentosEmitiveis;
@@ -51,7 +54,7 @@ export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto 
       </div>
       <div className="mt-6">
         {aba === "historico" && <HistoricoTab linhas={dados.historico} />}
-        {aba === "medidas" && <MedidasTab linhas={medidas} />}
+        {aba === "medidas" && <MedidasTab linhas={medidas} medida0070Regional={medida0070Regional} />}
         {aba === "inconsistencias" && <InconsistenciasTab linhas={dados.inconsistencias} />}
         {aba === "orcamentos" && <OrcamentosTab linhas={orcamentosEmitiveis} />}
       </div>
