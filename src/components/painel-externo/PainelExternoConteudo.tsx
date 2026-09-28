@@ -18,6 +18,16 @@ type AbaKey = (typeof ABAS)[number]["key"];
 
 export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto }) {
   const [aba, setAba] = useState<AbaKey>("historico");
+  // "Modo Apresentação": desconsidera notas em atraso do gráfico de Medidas
+  // Pendentes e dos cards/tabela de Orçamentos Emitíveis — filtrado aqui, na
+  // origem dos dados de cada aba, pra ficar totalmente fora de consideração
+  // (não só escondido visualmente).
+  const [modoApresentacao, setModoApresentacao] = useState(false);
+
+  const medidas = modoApresentacao ? dados.medidas.filter((m) => m.situacao !== "EM ATRASO") : dados.medidas;
+  const orcamentosEmitiveis = modoApresentacao
+    ? dados.orcamentosEmitiveis.filter((o) => o.desSituacao !== "EM ATRASO")
+    : dados.orcamentosEmitiveis;
 
   return (
     <div>
@@ -41,10 +51,23 @@ export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto 
       </div>
       <div className="mt-6">
         {aba === "historico" && <HistoricoTab linhas={dados.historico} />}
-        {aba === "medidas" && <MedidasTab linhas={dados.medidas} />}
+        {aba === "medidas" && <MedidasTab linhas={medidas} />}
         {aba === "inconsistencias" && <InconsistenciasTab linhas={dados.inconsistencias} />}
-        {aba === "orcamentos" && <OrcamentosTab linhas={dados.orcamentosEmitiveis} />}
+        {aba === "orcamentos" && <OrcamentosTab linhas={orcamentosEmitiveis} />}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setModoApresentacao((v) => !v)}
+        title="Oculta notas em atraso do gráfico de Medidas Pendentes e dos cards/tabela de Orçamentos Emitíveis"
+        className={`fixed bottom-4 right-4 z-50 rounded-full px-3 py-1.5 text-xs font-medium shadow-md transition ${
+          modoApresentacao
+            ? "bg-cemig-badge text-white"
+            : "border border-cemig-card-border bg-white text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        {modoApresentacao ? "✓ Modo Apresentação" : "Modo Apresentação"}
+      </button>
     </div>
   );
 }
