@@ -59,14 +59,19 @@ export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto 
       <button
         type="button"
         onClick={() => setModoApresentacao((v) => !v)}
-        title="Oculta notas em atraso do gráfico de Medidas Pendentes e dos cards/tabela de Orçamentos Emitíveis"
-        className={`fixed bottom-4 right-4 z-50 rounded-full px-3 py-1.5 text-xs font-medium shadow-md transition ${
+        aria-label="Modo Apresentação"
+        aria-pressed={modoApresentacao}
+        title="Modo Apresentação — oculta notas em atraso do gráfico de Medidas Pendentes e dos cards/tabela de Orçamentos Emitíveis"
+        className={`fixed bottom-4 right-4 z-50 flex h-8 w-8 items-center justify-center rounded-full shadow-md transition ${
           modoApresentacao
             ? "bg-cemig-badge text-white"
             : "border border-cemig-card-border bg-white text-gray-600 hover:bg-gray-50"
         }`}
       >
-        {modoApresentacao ? "✓ Modo Apresentação" : "Modo Apresentação"}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="4" width="20" height="13" rx="2" />
+          <path d="M8 21h8M12 17v4" />
+        </svg>
       </button>
     </div>
   );
