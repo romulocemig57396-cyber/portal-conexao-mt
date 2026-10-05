@@ -18,16 +18,18 @@ type AbaKey = (typeof ABAS)[number]["key"];
 
 export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto }) {
   const [aba, setAba] = useState<AbaKey>("historico");
-  // "Modo Apresentação": desconsidera notas em atraso do gráfico de Medidas
-  // Pendentes e dos cards/tabela de Orçamentos Emitíveis — filtrado aqui, na
-  // origem dos dados de cada aba, pra ficar totalmente fora de consideração
-  // (não só escondido visualmente).
+  // "Modo Apresentação": desconsidera notas em atraso da medida 0080 — no
+  // gráfico de Medidas Pendentes (só a barra 0080, as demais medidas
+  // continuam com o segmento "Em atraso" normalmente) e nos cards/tabela de
+  // Orçamentos Emitíveis (que já é só medida 0080). Filtrado aqui, na origem
+  // dos dados de cada aba, pra ficar totalmente fora de consideração (não só
+  // escondido visualmente). Medida 0070 por Regional não entra — é outra
+  // medida, fora do escopo pedido.
   const [modoApresentacao, setModoApresentacao] = useState(false);
 
-  const medidas = modoApresentacao ? dados.medidas.filter((m) => m.situacao !== "EM ATRASO") : dados.medidas;
-  const medida0070Regional = modoApresentacao
-    ? dados.medida0070Regional.filter((r) => r.situacao !== "EM ATRASO")
-    : dados.medida0070Regional;
+  const medidas = modoApresentacao
+    ? dados.medidas.filter((m) => !(m.codMedida === "0080" && m.situacao === "EM ATRASO"))
+    : dados.medidas;
   const orcamentosEmitiveis = modoApresentacao
     ? dados.orcamentosEmitiveis.filter((o) => o.desSituacao !== "EM ATRASO")
     : dados.orcamentosEmitiveis;
@@ -54,7 +56,7 @@ export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto 
       </div>
       <div className="mt-6">
         {aba === "historico" && <HistoricoTab linhas={dados.historico} />}
-        {aba === "medidas" && <MedidasTab linhas={medidas} medida0070Regional={medida0070Regional} />}
+        {aba === "medidas" && <MedidasTab linhas={medidas} medida0070Regional={dados.medida0070Regional} />}
         {aba === "inconsistencias" && <InconsistenciasTab linhas={dados.inconsistencias} />}
         {aba === "orcamentos" && <OrcamentosTab linhas={orcamentosEmitiveis} />}
       </div>
@@ -64,7 +66,7 @@ export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto 
         onClick={() => setModoApresentacao((v) => !v)}
         aria-label="Modo Apresentação"
         aria-pressed={modoApresentacao}
-        title="Modo Apresentação — oculta notas em atraso do gráfico de Medidas Pendentes e dos cards/tabela de Orçamentos Emitíveis"
+        title="Modo Apresentação — oculta notas em atraso da medida 0080 (gráfico de Medidas Pendentes e cards/tabela de Orçamentos Emitíveis)"
         className={`fixed bottom-4 right-4 z-50 flex h-8 w-8 items-center justify-center rounded-full shadow-md transition ${
           modoApresentacao
             ? "bg-cemig-badge text-white"
