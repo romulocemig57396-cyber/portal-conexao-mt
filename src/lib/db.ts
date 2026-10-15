@@ -96,6 +96,8 @@ export interface AvisoComAutor extends Aviso {
 // Valor usado quando a nota não tem tipo de solicitação (ou o exportador é
 // anterior ao filtro) — mesmo texto que o painelConexao grava em "SEM TIPO".
 export const SEM_TIPO_SOLICITACAO = "SEM TIPO";
+export const CLASSE_PADRAO = "OUTRAS";
+export const FAIXA_CAIXAS_PADRAO = "SEM INFORMAÇÃO";
 
 export type PainelExternoGrafico = "aprovacao" | "liberacao" | "universalizacao";
 
@@ -106,6 +108,8 @@ export interface PainelExternoHistoricoLinha {
   mercado: string;
   regional: string;
   tipoSolicitacao: string;
+  classe: string;
+  faixaCaixas: string;
   categoria: string;
   quantidade: number;
 }
@@ -116,6 +120,8 @@ export interface PainelExternoMedidaLinha {
   mercado: string;
   regional: string;
   tipoSolicitacao: string;
+  classe: string;
+  faixaCaixas: string;
   codMedida: string;
   situacao: string;
   quantidade: number;
@@ -125,6 +131,8 @@ export interface PainelExternoMedida0070RegionalLinha {
   servico: string;
   regional: string;
   tipoSolicitacao: string;
+  classe: string;
+  faixaCaixas: string;
   situacao: string;
   quantidade: number;
 }
@@ -258,6 +266,8 @@ async function migrate(client: Client) {
         mercado TEXT NOT NULL,
         regional TEXT NOT NULL,
         tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
+        classe TEXT NOT NULL DEFAULT 'OUTRAS',
+        faixa_caixas TEXT NOT NULL DEFAULT 'SEM INFORMAÇÃO',
         categoria TEXT NOT NULL,
         quantidade INTEGER NOT NULL
       )`,
@@ -268,6 +278,8 @@ async function migrate(client: Client) {
         mercado TEXT NOT NULL,
         regional TEXT NOT NULL,
         tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
+        classe TEXT NOT NULL DEFAULT 'OUTRAS',
+        faixa_caixas TEXT NOT NULL DEFAULT 'SEM INFORMAÇÃO',
         cod_medida TEXT NOT NULL,
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
@@ -277,6 +289,8 @@ async function migrate(client: Client) {
         servico TEXT NOT NULL,
         regional TEXT NOT NULL,
         tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
+        classe TEXT NOT NULL DEFAULT 'OUTRAS',
+        faixa_caixas TEXT NOT NULL DEFAULT 'SEM INFORMAÇÃO',
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
       )`,
@@ -322,20 +336,26 @@ async function migrate(client: Client) {
 
   const colunas = await client.execute("PRAGMA table_info(usuarios)");
   const nomesColunas = colunas.rows.map((r) => (r as unknown as { name: string }).name);
-  // Tabelas do painel externo criadas antes do filtro de tipo de solicitação
-  // (LN, AC, ML, NT...) não têm a coluna — CREATE TABLE IF NOT EXISTS não
-  // altera tabela existente, então acrescenta aqui. Dados antigos ficam como
-  // 'SEM TIPO' até a próxima ingestão (que substitui tudo).
+  // Tabelas do painel externo criadas antes dos filtros de tipo de solicitação
+  // (LN, AC, ML, NT...), classe e número de caixas não têm as colunas —
+  // CREATE TABLE IF NOT EXISTS não altera tabela existente, então acrescenta
+  // aqui. Dados antigos ficam com o valor padrão até a próxima ingestão (que
+  // substitui tudo).
   for (const tabela of [
     "painel_externo_historico",
     "painel_externo_medidas",
     "painel_externo_medida_0070_regional",
   ]) {
     const cols = await client.execute(`PRAGMA table_info(${tabela})`);
-    if (!cols.rows.some((r) => (r as unknown as { name: string }).name === "tipo_solicitacao")) {
-      await client.execute(
-        `ALTER TABLE ${tabela} ADD COLUMN tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO'`
-      );
+    const existentes = cols.rows.map((r) => (r as unknown as { name: string }).name);
+    for (const [coluna, padrao] of [
+      ["tipo_solicitacao", SEM_TIPO_SOLICITACAO],
+      ["classe", CLASSE_PADRAO],
+      ["faixa_caixas", FAIXA_CAIXAS_PADRAO],
+    ]) {
+      if (!existentes.includes(coluna)) {
+        await client.execute(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} TEXT NOT NULL DEFAULT '${padrao}'`);
+      }
     }
   }
 
@@ -1011,8 +1031,8 @@ export async function substituirPainelExterno(data: {
   for (const h of data.historico) {
     statements.push({
       sql: `INSERT INTO painel_externo_historico
-              (grafico, mes, servico, mercado, regional, tipo_solicitacao, categoria, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              (grafico, mes, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, categoria, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         h.grafico,
         h.mes,
@@ -1020,6 +1040,8 @@ export async function substituirPainelExterno(data: {
         h.mercado,
         h.regional,
         h.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
+        h.classe ?? CLASSE_PADRAO,
+        h.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
         h.categoria,
         h.quantidade,
       ],
@@ -1029,14 +1051,16 @@ export async function substituirPainelExterno(data: {
   for (const m of data.medidas) {
     statements.push({
       sql: `INSERT INTO painel_externo_medidas
-              (grupo, servico, mercado, regional, tipo_solicitacao, cod_medida, situacao, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              (grupo, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, cod_medida, situacao, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         m.grupo,
         m.servico,
         m.mercado,
         m.regional,
         m.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
+        m.classe ?? CLASSE_PADRAO,
+        m.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
         m.codMedida,
         m.situacao,
         m.quantidade,
@@ -1047,9 +1071,17 @@ export async function substituirPainelExterno(data: {
   for (const r of data.medida0070Regional) {
     statements.push({
       sql: `INSERT INTO painel_externo_medida_0070_regional
-              (servico, regional, tipo_solicitacao, situacao, quantidade)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: [r.servico, r.regional, r.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO, r.situacao, r.quantidade],
+              (servico, regional, tipo_solicitacao, classe, faixa_caixas, situacao, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        r.servico,
+        r.regional,
+        r.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
+        r.classe ?? CLASSE_PADRAO,
+        r.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
+        r.situacao,
+        r.quantidade,
+      ],
     });
   }
 
@@ -1116,13 +1148,13 @@ export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto>
 
   const [historico, medidas, medida0070Regional, inconsistencias, orcamentos, meta] = await Promise.all([
     client.execute(
-      "SELECT grafico, mes, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, categoria, quantidade FROM painel_externo_historico"
+      "SELECT grafico, mes, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, categoria, quantidade FROM painel_externo_historico"
     ),
     client.execute(
-      "SELECT grupo, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
+      "SELECT grupo, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
     ),
     client.execute(
-      "SELECT servico, regional, tipo_solicitacao AS tipoSolicitacao, situacao, quantidade FROM painel_externo_medida_0070_regional"
+      "SELECT servico, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, situacao, quantidade FROM painel_externo_medida_0070_regional"
     ),
     client.execute(
       `SELECT tipo, num_nota AS numNota, cod_servico AS codServico, dat_criacao AS datCriacao,

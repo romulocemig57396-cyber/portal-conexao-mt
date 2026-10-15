@@ -12,3 +12,18 @@ export function ordenarTiposSolicitacao(tipos: Iterable<string>): string[] {
   };
   return unicos.sort((a, b) => peso(a) - peso(b) || a.localeCompare(b));
 }
+
+// Ordem fixa dos chips de classe e de faixa de número de caixas.
+const ORDEM_CLASSE = ["RESIDENCIAL", "COMERCIAL", "INDUSTRIAL", "OUTRAS"];
+const ORDEM_FAIXA_CAIXAS = ["1", "2", "3", "4 OU MAIS", "SEM INFORMAÇÃO"];
+
+function ordenarPor(valores: Iterable<string>, ordem: string[]): string[] {
+  const peso = (v: string) => {
+    const i = ordem.indexOf(v);
+    return i === -1 ? ordem.length : i;
+  };
+  return [...new Set(valores)].sort((a, b) => peso(a) - peso(b) || a.localeCompare(b));
+}
+
+export const ordenarClasses = (valores: Iterable<string>) => ordenarPor(valores, ORDEM_CLASSE);
+export const ordenarFaixasCaixas = (valores: Iterable<string>) => ordenarPor(valores, ORDEM_FAIXA_CAIXAS);
