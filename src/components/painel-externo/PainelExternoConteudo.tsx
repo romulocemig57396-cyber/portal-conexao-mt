@@ -55,7 +55,7 @@ export function PainelExternoConteudo({ dados }: { dados: PainelExternoCompleto 
         ))}
       </div>
       <div className="mt-6">
-        {aba === "historico" && <HistoricoTab linhas={dados.historico} />}
+        {aba === "historico" && <HistoricoTab linhas={dados.historico} valorObra={dados.valorObra} />}
         {aba === "medidas" && <MedidasTab
             linhas={medidas}
             medida0070Regional={dados.medida0070Regional}

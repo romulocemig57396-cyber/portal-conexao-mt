@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { LabelProps } from "recharts";
-import type { PainelExternoGrafico, PainelExternoHistoricoLinha } from "@/lib/db";
+import type { PainelExternoGrafico, PainelExternoHistoricoLinha, PainelExternoValorObraLinha } from "@/lib/db";
 import { ChipFiltro } from "./ChipFiltro";
+import { CardValorObra, somarValorObra } from "./CardValorObra";
 import { ordenarClasses, ordenarFaixasCaixas, ordenarTiposSolicitacao } from "@/lib/tiposSolicitacaoPainel";
 
 // Mesma paleta/categorias do painelConexao (client/src/App.jsx
@@ -115,6 +116,7 @@ function renderRotuloTotal(props: LabelProps) {
 function GraficoHistorico({
   grafico,
   linhas,
+  valorObra,
   servicos,
   mercados,
   regionais,
@@ -124,6 +126,7 @@ function GraficoHistorico({
 }: {
   grafico: PainelExternoGrafico;
   linhas: PainelExternoHistoricoLinha[];
+  valorObra: PainelExternoValorObraLinha[];
   servicos: string[];
   mercados: string[];
   regionais: string[];
@@ -136,10 +139,20 @@ function GraficoHistorico({
     [linhas, grafico, servicos, mercados, regionais, tipos, classes, faixas]
   );
   const categorias = CATEGORIAS[grafico];
+  const temValorObra = useMemo(() => valorObra.some((v) => v.grafico === grafico), [valorObra, grafico]);
+  const totalValorObra = useMemo(
+    () => somarValorObra(valorObra, grafico, { servicos, mercados, regionais, tipos, classes, faixas }),
+    [valorObra, grafico, servicos, mercados, regionais, tipos, classes, faixas]
+  );
 
   return (
     <section className="rounded-xl border border-cemig-card-border bg-cemig-card-bg p-4 shadow-sm">
       <h2 className="text-sm font-semibold text-gray-900">{TITULOS[grafico]}</h2>
+      {temValorObra && (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <CardValorObra notas={totalValorObra.notas} valorObra={totalValorObra.valor} />
+        </div>
+      )}
       {!dados.length ? (
         <p className="mt-4 text-sm text-gray-500">Nenhum dado para os filtros atuais.</p>
       ) : (
@@ -189,7 +202,13 @@ function GraficoHistorico({
   );
 }
 
-export function HistoricoTab({ linhas }: { linhas: PainelExternoHistoricoLinha[] }) {
+export function HistoricoTab({
+  linhas,
+  valorObra,
+}: {
+  linhas: PainelExternoHistoricoLinha[];
+  valorObra: PainelExternoValorObraLinha[];
+}) {
   const servicosDisponiveis = useMemo(() => [...new Set(linhas.map((l) => l.servico))].sort(), [linhas]);
   const mercadosDisponiveis = useMemo(() => [...new Set(linhas.map((l) => l.mercado))].sort(), [linhas]);
   const regionaisDisponiveis = useMemo(() => [...new Set(linhas.map((l) => l.regional))].sort(), [linhas]);
@@ -220,9 +239,9 @@ export function HistoricoTab({ linhas }: { linhas: PainelExternoHistoricoLinha[]
         <ChipFiltro label="Classe" opcoes={classesDisponiveis} selecionadas={classes} onChange={setClasses} />
         <ChipFiltro label="Número de caixas" opcoes={faixasDisponiveis} selecionadas={faixas} onChange={setFaixas} />
       </div>
-      <GraficoHistorico grafico="aprovacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
-      <GraficoHistorico grafico="liberacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
-      <GraficoHistorico grafico="universalizacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
+      <GraficoHistorico grafico="aprovacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
+      <GraficoHistorico grafico="liberacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
+      <GraficoHistorico grafico="universalizacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
     </div>
   );
 }

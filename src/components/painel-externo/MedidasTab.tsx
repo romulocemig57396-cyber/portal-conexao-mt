@@ -10,6 +10,7 @@ import type {
 } from "@/lib/db";
 import { SITUACAO_META } from "@/lib/situacao";
 import { ChipFiltro } from "./ChipFiltro";
+import { CardValorObra, somarValorObra } from "./CardValorObra";
 import { ordenarClasses, ordenarFaixasCaixas, ordenarTiposSolicitacao } from "@/lib/tiposSolicitacaoPainel";
 
 // Grupo 2 usa a situação legada (DES_SITUACAO de TBL_MEDIDAS), com valores
@@ -284,24 +285,6 @@ function GraficoMedidas({
   );
 }
 
-const formatadorReal = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  maximumFractionDigits: 0,
-});
-
-// Valor total das obras (uma vez por nota) que estão no gráfico principal de
-// Medidas Pendentes, com os mesmos filtros de serviço/regional/tipo/classe/caixas.
-function CardValorObra({ notas, valorObra }: { notas: number; valorObra: number }) {
-  return (
-    <div className="rounded-xl border border-cemig-card-border bg-white p-4">
-      <p className="text-xs font-medium text-gray-600">Valor da obra</p>
-      <p className="mt-1 text-2xl font-semibold text-gray-900">{formatadorReal.format(valorObra)}</p>
-      <p className="mt-1 text-xs text-gray-500">{notas.toLocaleString("pt-BR")} obras no gráfico</p>
-    </div>
-  );
-}
-
 export function MedidasTab({
   linhas,
   medida0070Regional,
@@ -341,23 +324,10 @@ export function MedidasTab({
   const [classes, setClasses] = useState<string[]>(classesDisponiveis);
   const [faixas, setFaixas] = useState<string[]>(faixasDisponiveis);
 
-  const totalValorObra = useMemo(() => {
-    let notas = 0;
-    let valor = 0;
-    for (const l of valorObra ?? []) {
-      if (
-        servicos.includes(l.servico) &&
-        regionais.includes(l.regional) &&
-        tipos.includes(l.tipoSolicitacao) &&
-        classes.includes(l.classe) &&
-        faixas.includes(l.faixaCaixas)
-      ) {
-        notas += l.notas;
-        valor += l.valorObra;
-      }
-    }
-    return { notas, valor };
-  }, [valorObra, servicos, regionais, tipos, classes, faixas]);
+  const totalValorObra = useMemo(
+    () => somarValorObra(valorObra ?? [], "medidas", { servicos, regionais, tipos, classes, faixas }),
+    [valorObra, servicos, regionais, tipos, classes, faixas]
+  );
 
   if (!linhas.length && !medida0070Regional.length) {
     return <p className="text-sm text-gray-500">Nenhum dado de medidas disponível ainda.</p>;
@@ -372,7 +342,7 @@ export function MedidasTab({
         <ChipFiltro label="Classe" opcoes={classesDisponiveis} selecionadas={classes} onChange={setClasses} />
         <ChipFiltro label="Número de caixas" opcoes={faixasDisponiveis} selecionadas={faixas} onChange={setFaixas} />
       </div>
-      {valorObra !== null && valorObra.length > 0 && (
+      {valorObra !== null && valorObra.some((v) => v.grafico === "medidas") && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <CardValorObra notas={totalValorObra.notas} valorObra={totalValorObra.valor} />
         </div>

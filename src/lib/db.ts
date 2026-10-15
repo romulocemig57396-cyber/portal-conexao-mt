@@ -96,6 +96,7 @@ export interface AvisoComAutor extends Aviso {
 // Valor usado quando a nota não tem tipo de solicitação (ou o exportador é
 // anterior ao filtro) — mesmo texto que o painelConexao grava em "SEM TIPO".
 export const SEM_TIPO_SOLICITACAO = "SEM TIPO";
+export const GRAFICO_VALOR_OBRA_PADRAO = "medidas";
 export const CLASSE_PADRAO = "OUTRAS";
 export const FAIXA_CAIXAS_PADRAO = "SEM INFORMAÇÃO";
 
@@ -130,6 +131,8 @@ export interface PainelExternoMedidaLinha {
 // Valor total da obra (TBL_OBRA_CUSTOS.VAL_TOTAL_OBRA) das notas com medida do
 // grupo 1 pendente, já somado (uma vez por nota) por combinação dos filtros.
 export interface PainelExternoValorObraLinha {
+  // "medidas" (Medidas Pendentes) ou o gráfico do Histórico (aprovacao/liberacao/universalizacao).
+  grafico: string;
   servico: string;
   mercado: string;
   regional: string;
@@ -300,6 +303,7 @@ async function migrate(client: Client) {
       )`,
       `CREATE TABLE IF NOT EXISTS painel_externo_valor_obra (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        grafico TEXT NOT NULL DEFAULT 'medidas',
         servico TEXT NOT NULL,
         mercado TEXT NOT NULL,
         regional TEXT NOT NULL,
@@ -382,6 +386,13 @@ async function migrate(client: Client) {
         await client.execute(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} TEXT NOT NULL DEFAULT '${padrao}'`);
       }
     }
+  }
+
+  const colunasValorObra = await client.execute("PRAGMA table_info(painel_externo_valor_obra)");
+  if (!colunasValorObra.rows.some((r) => (r as unknown as { name: string }).name === "grafico")) {
+    await client.execute(
+      `ALTER TABLE painel_externo_valor_obra ADD COLUMN grafico TEXT NOT NULL DEFAULT '${GRAFICO_VALOR_OBRA_PADRAO}'`
+    );
   }
 
   if (!nomesColunas.includes("ativo")) {
@@ -1098,9 +1109,10 @@ export async function substituirPainelExterno(data: {
   for (const v of data.valorObra ?? []) {
     statements.push({
       sql: `INSERT INTO painel_externo_valor_obra
-              (servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, notas, valor_obra)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              (grafico, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, notas, valor_obra)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
+        v.grafico ?? GRAFICO_VALOR_OBRA_PADRAO,
         v.servico,
         v.mercado,
         v.regional,
@@ -1199,7 +1211,7 @@ export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto>
       "SELECT grupo, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
     ),
     client.execute(
-      "SELECT servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, notas, valor_obra AS valorObra FROM painel_externo_valor_obra"
+      "SELECT grafico, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, notas, valor_obra AS valorObra FROM painel_externo_valor_obra"
     ),
     client.execute(
       "SELECT servico, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, situacao, quantidade FROM painel_externo_medida_0070_regional"
