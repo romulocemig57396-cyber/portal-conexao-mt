@@ -3,6 +3,7 @@ import {
   substituirPainelExterno,
   type PainelExternoHistoricoLinha,
   type PainelExternoMedidaLinha,
+  type PainelExternoValorObraLinha,
   type PainelExternoMedida0070RegionalLinha,
   type PainelExternoInconsistenciaLinha,
   type PainelExternoOrcamentoEmitivelLinha,
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
   }
 
-  const { historico, medidas, medida0070Regional, inconsistencias, orcamentosEmitiveis } = body as Record<
+  const { historico, medidas, valorObra, medida0070Regional, inconsistencias, orcamentosEmitiveis } = body as Record<
     string,
     unknown
   >;
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
   if (
     !ehArrayDeObjetos(historico) ||
     !ehArrayDeObjetos(medidas) ||
+    (valorObra !== undefined && !ehArrayDeObjetos(valorObra)) ||
     !ehArrayDeObjetos(medida0070Regional) ||
     !ehArrayDeObjetos(inconsistencias) ||
     !ehArrayDeObjetos(orcamentosEmitiveis)
@@ -50,6 +52,7 @@ export async function POST(request: Request) {
     await substituirPainelExterno({
       historico: historico as unknown as PainelExternoHistoricoLinha[],
       medidas: medidas as unknown as PainelExternoMedidaLinha[],
+      valorObra: valorObra as unknown as PainelExternoValorObraLinha[] | undefined,
       medida0070Regional: medida0070Regional as unknown as PainelExternoMedida0070RegionalLinha[],
       inconsistencias: inconsistencias as unknown as PainelExternoInconsistenciaLinha[],
       orcamentosEmitiveis: orcamentosEmitiveis as unknown as PainelExternoOrcamentoEmitivelLinha[],

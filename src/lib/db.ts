@@ -127,6 +127,19 @@ export interface PainelExternoMedidaLinha {
   quantidade: number;
 }
 
+// Valor total da obra (TBL_OBRA_CUSTOS.VAL_TOTAL_OBRA) das notas com medida do
+// grupo 1 pendente, já somado (uma vez por nota) por combinação dos filtros.
+export interface PainelExternoValorObraLinha {
+  servico: string;
+  mercado: string;
+  regional: string;
+  tipoSolicitacao: string;
+  classe: string;
+  faixaCaixas: string;
+  notas: number;
+  valorObra: number;
+}
+
 export interface PainelExternoMedida0070RegionalLinha {
   servico: string;
   regional: string;
@@ -176,6 +189,7 @@ export interface PainelExternoCompleto {
   atualizadoEm: string | null;
   historico: PainelExternoHistoricoLinha[];
   medidas: PainelExternoMedidaLinha[];
+  valorObra: PainelExternoValorObraLinha[];
   medida0070Regional: PainelExternoMedida0070RegionalLinha[];
   inconsistencias: PainelExternoInconsistenciaLinha[];
   orcamentosEmitiveis: PainelExternoOrcamentoEmitivelLinha[];
@@ -283,6 +297,17 @@ async function migrate(client: Client) {
         cod_medida TEXT NOT NULL,
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS painel_externo_valor_obra (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        servico TEXT NOT NULL,
+        mercado TEXT NOT NULL,
+        regional TEXT NOT NULL,
+        tipo_solicitacao TEXT NOT NULL,
+        classe TEXT NOT NULL,
+        faixa_caixas TEXT NOT NULL,
+        notas INTEGER NOT NULL,
+        valor_obra REAL NOT NULL
       )`,
       `CREATE TABLE IF NOT EXISTS painel_externo_medida_0070_regional (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1014,6 +1039,7 @@ export async function listAniversariantesDoMes(): Promise<Aniversariante[]> {
 export async function substituirPainelExterno(data: {
   historico: PainelExternoHistoricoLinha[];
   medidas: PainelExternoMedidaLinha[];
+  valorObra?: PainelExternoValorObraLinha[];
   medida0070Regional: PainelExternoMedida0070RegionalLinha[];
   inconsistencias: PainelExternoInconsistenciaLinha[];
   orcamentosEmitiveis: PainelExternoOrcamentoEmitivelLinha[];
@@ -1023,6 +1049,7 @@ export async function substituirPainelExterno(data: {
   const statements: Array<{ sql: string; args: (string | number | null)[] }> = [
     { sql: "DELETE FROM painel_externo_historico", args: [] },
     { sql: "DELETE FROM painel_externo_medidas", args: [] },
+    { sql: "DELETE FROM painel_externo_valor_obra", args: [] },
     { sql: "DELETE FROM painel_externo_medida_0070_regional", args: [] },
     { sql: "DELETE FROM painel_externo_inconsistencias", args: [] },
     { sql: "DELETE FROM painel_externo_orcamentos_emitiveis", args: [] },
@@ -1064,6 +1091,24 @@ export async function substituirPainelExterno(data: {
         m.codMedida,
         m.situacao,
         m.quantidade,
+      ],
+    });
+  }
+
+  for (const v of data.valorObra ?? []) {
+    statements.push({
+      sql: `INSERT INTO painel_externo_valor_obra
+              (servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, notas, valor_obra)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        v.servico,
+        v.mercado,
+        v.regional,
+        v.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
+        v.classe ?? CLASSE_PADRAO,
+        v.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
+        v.notas,
+        v.valorObra,
       ],
     });
   }
@@ -1146,12 +1191,15 @@ export async function substituirPainelExterno(data: {
 export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto> {
   const client = await ready();
 
-  const [historico, medidas, medida0070Regional, inconsistencias, orcamentos, meta] = await Promise.all([
+  const [historico, medidas, valorObra, medida0070Regional, inconsistencias, orcamentos, meta] = await Promise.all([
     client.execute(
       "SELECT grafico, mes, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, categoria, quantidade FROM painel_externo_historico"
     ),
     client.execute(
       "SELECT grupo, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
+    ),
+    client.execute(
+      "SELECT servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, notas, valor_obra AS valorObra FROM painel_externo_valor_obra"
     ),
     client.execute(
       "SELECT servico, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, situacao, quantidade FROM painel_externo_medida_0070_regional"
@@ -1186,6 +1234,10 @@ export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto>
     medidas: medidas.rows.map((row) => {
       const r = row as unknown as PainelExternoMedidaLinha;
       return { ...r, quantidade: Number(r.quantidade) };
+    }),
+    valorObra: valorObra.rows.map((row) => {
+      const r = row as unknown as PainelExternoValorObraLinha;
+      return { ...r, notas: Number(r.notas), valorObra: Number(r.valorObra) };
     }),
     medida0070Regional: medida0070Regional.rows.map((row) => {
       const r = row as unknown as PainelExternoMedida0070RegionalLinha;
