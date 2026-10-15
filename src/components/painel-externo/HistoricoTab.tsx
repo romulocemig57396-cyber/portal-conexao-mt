@@ -96,8 +96,14 @@ function renderRotuloPercentual(props: LabelProps) {
   );
 }
 
-function totalDoMes(entry: { payload?: { _total?: number } }) {
-  return entry.payload?._total ?? 0;
+// O total fica preso à fatia do topo de cada barra (última série com valor maior
+// que zero): rótulo em fatia de altura zero não é desenhado.
+function totalNoTopo(serie: string, ordem: string[]) {
+  return (entry: { payload?: { _bruto?: Record<string, number>; _total?: number } }) => {
+    const bruto = entry.payload?._bruto ?? {};
+    const topo = [...ordem].reverse().find((s) => (bruto[s] ?? 0) > 0);
+    return topo === serie ? (entry.payload?._total ?? 0) : null;
+  };
 }
 
 function renderRotuloTotal(props: LabelProps) {
@@ -191,7 +197,7 @@ function GraficoHistorico({
                   radius={ultima ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                 >
                   <LabelList valueAccessor={calcularPercentualRotulo(cat.key)} content={renderRotuloPercentual} />
-                  {ultima && <LabelList valueAccessor={totalDoMes} content={renderRotuloTotal} />}
+                  <LabelList valueAccessor={totalNoTopo(cat.key, categorias.map((c) => c.key))} content={renderRotuloTotal} />
                 </Bar>
               );
             })}
