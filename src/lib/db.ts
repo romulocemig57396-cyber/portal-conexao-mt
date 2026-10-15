@@ -93,6 +93,10 @@ export interface AvisoComAutor extends Aviso {
 // acumulam ao longo do tempo; o painelConexao já manda o recorte completo
 // (ex: histórico inteiro desde a data mínima configurada) em cada push.
 
+// Valor usado quando a nota não tem tipo de solicitação (ou o exportador é
+// anterior ao filtro) — mesmo texto que o painelConexao grava em "SEM TIPO".
+export const SEM_TIPO_SOLICITACAO = "SEM TIPO";
+
 export type PainelExternoGrafico = "aprovacao" | "liberacao" | "universalizacao";
 
 export interface PainelExternoHistoricoLinha {
@@ -101,6 +105,7 @@ export interface PainelExternoHistoricoLinha {
   servico: string;
   mercado: string;
   regional: string;
+  tipoSolicitacao: string;
   categoria: string;
   quantidade: number;
 }
@@ -110,6 +115,7 @@ export interface PainelExternoMedidaLinha {
   servico: string;
   mercado: string;
   regional: string;
+  tipoSolicitacao: string;
   codMedida: string;
   situacao: string;
   quantidade: number;
@@ -118,6 +124,7 @@ export interface PainelExternoMedidaLinha {
 export interface PainelExternoMedida0070RegionalLinha {
   servico: string;
   regional: string;
+  tipoSolicitacao: string;
   situacao: string;
   quantidade: number;
 }
@@ -250,6 +257,7 @@ async function migrate(client: Client) {
         servico TEXT NOT NULL,
         mercado TEXT NOT NULL,
         regional TEXT NOT NULL,
+        tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
         categoria TEXT NOT NULL,
         quantidade INTEGER NOT NULL
       )`,
@@ -259,6 +267,7 @@ async function migrate(client: Client) {
         servico TEXT NOT NULL,
         mercado TEXT NOT NULL,
         regional TEXT NOT NULL,
+        tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
         cod_medida TEXT NOT NULL,
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
@@ -267,6 +276,7 @@ async function migrate(client: Client) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         servico TEXT NOT NULL,
         regional TEXT NOT NULL,
+        tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
       )`,
@@ -312,6 +322,23 @@ async function migrate(client: Client) {
 
   const colunas = await client.execute("PRAGMA table_info(usuarios)");
   const nomesColunas = colunas.rows.map((r) => (r as unknown as { name: string }).name);
+  // Tabelas do painel externo criadas antes do filtro de tipo de solicitação
+  // (LN, AC, ML, NT...) não têm a coluna — CREATE TABLE IF NOT EXISTS não
+  // altera tabela existente, então acrescenta aqui. Dados antigos ficam como
+  // 'SEM TIPO' até a próxima ingestão (que substitui tudo).
+  for (const tabela of [
+    "painel_externo_historico",
+    "painel_externo_medidas",
+    "painel_externo_medida_0070_regional",
+  ]) {
+    const cols = await client.execute(`PRAGMA table_info(${tabela})`);
+    if (!cols.rows.some((r) => (r as unknown as { name: string }).name === "tipo_solicitacao")) {
+      await client.execute(
+        `ALTER TABLE ${tabela} ADD COLUMN tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO'`
+      );
+    }
+  }
+
   if (!nomesColunas.includes("ativo")) {
     await client.execute("ALTER TABLE usuarios ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1");
   }
@@ -984,27 +1011,45 @@ export async function substituirPainelExterno(data: {
   for (const h of data.historico) {
     statements.push({
       sql: `INSERT INTO painel_externo_historico
-              (grafico, mes, servico, mercado, regional, categoria, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [h.grafico, h.mes, h.servico, h.mercado, h.regional, h.categoria, h.quantidade],
+              (grafico, mes, servico, mercado, regional, tipo_solicitacao, categoria, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        h.grafico,
+        h.mes,
+        h.servico,
+        h.mercado,
+        h.regional,
+        h.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
+        h.categoria,
+        h.quantidade,
+      ],
     });
   }
 
   for (const m of data.medidas) {
     statements.push({
       sql: `INSERT INTO painel_externo_medidas
-              (grupo, servico, mercado, regional, cod_medida, situacao, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [m.grupo, m.servico, m.mercado, m.regional, m.codMedida, m.situacao, m.quantidade],
+              (grupo, servico, mercado, regional, tipo_solicitacao, cod_medida, situacao, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        m.grupo,
+        m.servico,
+        m.mercado,
+        m.regional,
+        m.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
+        m.codMedida,
+        m.situacao,
+        m.quantidade,
+      ],
     });
   }
 
   for (const r of data.medida0070Regional) {
     statements.push({
       sql: `INSERT INTO painel_externo_medida_0070_regional
-              (servico, regional, situacao, quantidade)
-            VALUES (?, ?, ?, ?)`,
-      args: [r.servico, r.regional, r.situacao, r.quantidade],
+              (servico, regional, tipo_solicitacao, situacao, quantidade)
+            VALUES (?, ?, ?, ?, ?)`,
+      args: [r.servico, r.regional, r.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO, r.situacao, r.quantidade],
     });
   }
 
@@ -1071,13 +1116,13 @@ export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto>
 
   const [historico, medidas, medida0070Regional, inconsistencias, orcamentos, meta] = await Promise.all([
     client.execute(
-      "SELECT grafico, mes, servico, mercado, regional, categoria, quantidade FROM painel_externo_historico"
+      "SELECT grafico, mes, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, categoria, quantidade FROM painel_externo_historico"
     ),
     client.execute(
-      "SELECT grupo, servico, mercado, regional, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
+      "SELECT grupo, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
     ),
     client.execute(
-      "SELECT servico, regional, situacao, quantidade FROM painel_externo_medida_0070_regional"
+      "SELECT servico, regional, tipo_solicitacao AS tipoSolicitacao, situacao, quantidade FROM painel_externo_medida_0070_regional"
     ),
     client.execute(
       `SELECT tipo, num_nota AS numNota, cod_servico AS codServico, dat_criacao AS datCriacao,

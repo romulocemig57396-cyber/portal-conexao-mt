@@ -6,6 +6,7 @@ import type { LabelProps } from "recharts";
 import type { PainelExternoMedidaLinha, PainelExternoMedida0070RegionalLinha } from "@/lib/db";
 import { SITUACAO_META } from "@/lib/situacao";
 import { ChipFiltro } from "./ChipFiltro";
+import { ordenarTiposSolicitacao } from "@/lib/tiposSolicitacaoPainel";
 
 // Grupo 2 usa a situação legada (DES_SITUACAO de TBL_MEDIDAS), com valores
 // que variam por serviço — por isso não tem paleta fixa, cor é atribuída
@@ -17,9 +18,19 @@ const COR_FALLBACK = "#898781";
 // caberia) — mesmo critério do painelConexao (HistoricoStackedBarChart.jsx).
 const PERCENTUAL_MINIMO_ROTULO = 5;
 
-function agregarPorMedida(linhas: PainelExternoMedidaLinha[], grupo: string, servicos: string[], regionais: string[]) {
+function agregarPorMedida(
+  linhas: PainelExternoMedidaLinha[],
+  grupo: string,
+  servicos: string[],
+  regionais: string[],
+  tipos: string[]
+) {
   const filtradas = linhas.filter(
-    (l) => l.grupo === grupo && servicos.includes(l.servico) && regionais.includes(l.regional)
+    (l) =>
+      l.grupo === grupo &&
+      servicos.includes(l.servico) &&
+      regionais.includes(l.regional) &&
+      tipos.includes(l.tipoSolicitacao)
   );
   const porMedida = new Map<string, Record<string, number>>();
   for (const l of filtradas) {
@@ -73,8 +84,15 @@ function renderRotuloTotal(props: LabelProps) {
   );
 }
 
-function agregarPorRegional(linhas: PainelExternoMedida0070RegionalLinha[], servicos: string[], regionais: string[]) {
-  const filtradas = linhas.filter((l) => servicos.includes(l.servico) && regionais.includes(l.regional));
+function agregarPorRegional(
+  linhas: PainelExternoMedida0070RegionalLinha[],
+  servicos: string[],
+  regionais: string[],
+  tipos: string[]
+) {
+  const filtradas = linhas.filter(
+    (l) => servicos.includes(l.servico) && regionais.includes(l.regional) && tipos.includes(l.tipoSolicitacao)
+  );
   const porRegional = new Map<string, Record<string, number>>();
   for (const l of filtradas) {
     if (!porRegional.has(l.regional)) porRegional.set(l.regional, {});
@@ -92,12 +110,14 @@ function GraficoMedida0070Regional({
   linhas,
   servicos,
   regionais,
+  tipos,
 }: {
   linhas: PainelExternoMedida0070RegionalLinha[];
   servicos: string[];
   regionais: string[];
+  tipos: string[];
 }) {
-  const dados = useMemo(() => agregarPorRegional(linhas, servicos, regionais), [linhas, servicos, regionais]);
+  const dados = useMemo(() => agregarPorRegional(linhas, servicos, regionais, tipos), [linhas, servicos, regionais, tipos]);
   const situacoes = useMemo(
     () =>
       [...new Set(dados.flatMap((d) => Object.keys(d).filter((k) => !["regional", "_bruto", "_total"].includes(k))))].sort(),
@@ -166,14 +186,19 @@ function GraficoMedidas({
   grupo,
   servicos,
   regionais,
+  tipos,
 }: {
   titulo: string;
   linhas: PainelExternoMedidaLinha[];
   grupo: string;
   servicos: string[];
   regionais: string[];
+  tipos: string[];
 }) {
-  const dados = useMemo(() => agregarPorMedida(linhas, grupo, servicos, regionais), [linhas, grupo, servicos, regionais]);
+  const dados = useMemo(
+    () => agregarPorMedida(linhas, grupo, servicos, regionais, tipos),
+    [linhas, grupo, servicos, regionais, tipos]
+  );
   const situacoes = useMemo(
     () =>
       [...new Set(dados.flatMap((d) => Object.keys(d).filter((k) => !["codMedida", "_bruto", "_total"].includes(k))))].sort(),
@@ -252,8 +277,14 @@ export function MedidasTab({
     [linhas, medida0070Regional]
   );
 
+  const tiposDisponiveis = useMemo(
+    () => ordenarTiposSolicitacao([...linhas.map((l) => l.tipoSolicitacao), ...medida0070Regional.map((l) => l.tipoSolicitacao)]),
+    [linhas, medida0070Regional]
+  );
+
   const [servicos, setServicos] = useState<string[]>(servicosDisponiveis);
   const [regionais, setRegionais] = useState<string[]>(regionaisDisponiveis);
+  const [tipos, setTipos] = useState<string[]>(tiposDisponiveis);
 
   if (!linhas.length && !medida0070Regional.length) {
     return <p className="text-sm text-gray-500">Nenhum dado de medidas disponível ainda.</p>;
@@ -264,6 +295,7 @@ export function MedidasTab({
       <div className="flex flex-wrap gap-6 rounded-xl border border-cemig-card-border bg-white p-4">
         <ChipFiltro label="Serviço" opcoes={servicosDisponiveis} selecionadas={servicos} onChange={setServicos} />
         <ChipFiltro label="Regional" opcoes={regionaisDisponiveis} selecionadas={regionais} onChange={setRegionais} />
+        <ChipFiltro label="Tipo de solicitação" opcoes={tiposDisponiveis} selecionadas={tipos} onChange={setTipos} />
       </div>
       <GraficoMedidas
         titulo="Medidas pendentes por situação de vencimento"
@@ -271,14 +303,16 @@ export function MedidasTab({
         grupo="GRUPO1"
         servicos={servicos}
         regionais={regionais}
+        tipos={tipos}
       />
-      <GraficoMedida0070Regional linhas={medida0070Regional} servicos={servicos} regionais={regionais} />
+      <GraficoMedida0070Regional linhas={medida0070Regional} servicos={servicos} regionais={regionais} tipos={tipos} />
       <GraficoMedidas
         titulo="Medidas pendentes — Áreas envolvidas"
         linhas={linhas}
         grupo="GRUPO2"
         servicos={servicos}
         regionais={regionais}
+        tipos={tipos}
       />
     </div>
   );

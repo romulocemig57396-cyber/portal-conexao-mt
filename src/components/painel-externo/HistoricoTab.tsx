@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, T
 import type { LabelProps } from "recharts";
 import type { PainelExternoGrafico, PainelExternoHistoricoLinha } from "@/lib/db";
 import { ChipFiltro } from "./ChipFiltro";
+import { ordenarTiposSolicitacao } from "@/lib/tiposSolicitacaoPainel";
 
 // Mesma paleta/categorias do painelConexao (client/src/App.jsx
 // CATEGORIAS_APROVACAO/LIBERACAO/UNIVERSALIZACAO), pra manter os gráficos
@@ -44,14 +45,16 @@ function agregarPorMes(
   grafico: PainelExternoGrafico,
   servicos: string[],
   mercados: string[],
-  regionais: string[]
+  regionais: string[],
+  tipos: string[]
 ) {
   const filtradas = linhas.filter(
     (l) =>
       l.grafico === grafico &&
       servicos.includes(l.servico) &&
       mercados.includes(l.mercado) &&
-      regionais.includes(l.regional)
+      regionais.includes(l.regional) &&
+      tipos.includes(l.tipoSolicitacao)
   );
   const porMes = new Map<string, Record<string, number>>();
   for (const l of filtradas) {
@@ -111,16 +114,18 @@ function GraficoHistorico({
   servicos,
   mercados,
   regionais,
+  tipos,
 }: {
   grafico: PainelExternoGrafico;
   linhas: PainelExternoHistoricoLinha[];
   servicos: string[];
   mercados: string[];
   regionais: string[];
+  tipos: string[];
 }) {
   const dados = useMemo(
-    () => agregarPorMes(linhas, grafico, servicos, mercados, regionais),
-    [linhas, grafico, servicos, mercados, regionais]
+    () => agregarPorMes(linhas, grafico, servicos, mercados, regionais, tipos),
+    [linhas, grafico, servicos, mercados, regionais, tipos]
   );
   const categorias = CATEGORIAS[grafico];
 
@@ -181,9 +186,12 @@ export function HistoricoTab({ linhas }: { linhas: PainelExternoHistoricoLinha[]
   const mercadosDisponiveis = useMemo(() => [...new Set(linhas.map((l) => l.mercado))].sort(), [linhas]);
   const regionaisDisponiveis = useMemo(() => [...new Set(linhas.map((l) => l.regional))].sort(), [linhas]);
 
+  const tiposDisponiveis = useMemo(() => ordenarTiposSolicitacao(linhas.map((l) => l.tipoSolicitacao)), [linhas]);
+
   const [servicos, setServicos] = useState<string[]>(servicosDisponiveis);
   const [mercados, setMercados] = useState<string[]>(mercadosDisponiveis);
   const [regionais, setRegionais] = useState<string[]>(regionaisDisponiveis);
+  const [tipos, setTipos] = useState<string[]>(tiposDisponiveis);
 
   if (!linhas.length) {
     return <p className="text-sm text-gray-500">Nenhum dado de histórico disponível ainda.</p>;
@@ -195,10 +203,11 @@ export function HistoricoTab({ linhas }: { linhas: PainelExternoHistoricoLinha[]
         <ChipFiltro label="Serviço" opcoes={servicosDisponiveis} selecionadas={servicos} onChange={setServicos} />
         <ChipFiltro label="Mercado" opcoes={mercadosDisponiveis} selecionadas={mercados} onChange={setMercados} />
         <ChipFiltro label="Regional" opcoes={regionaisDisponiveis} selecionadas={regionais} onChange={setRegionais} />
+        <ChipFiltro label="Tipo de solicitação" opcoes={tiposDisponiveis} selecionadas={tipos} onChange={setTipos} />
       </div>
-      <GraficoHistorico grafico="aprovacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} />
-      <GraficoHistorico grafico="liberacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} />
-      <GraficoHistorico grafico="universalizacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} />
+      <GraficoHistorico grafico="aprovacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} />
+      <GraficoHistorico grafico="liberacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} />
+      <GraficoHistorico grafico="universalizacao" linhas={linhas} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} />
     </div>
   );
 }
