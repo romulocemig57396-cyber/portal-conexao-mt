@@ -10,11 +10,14 @@ export function ChipFiltro({
   opcoes,
   selecionadas,
   onChange,
+  rotulos,
 }: {
   label: string;
   opcoes: string[];
   selecionadas: string[];
   onChange: (novas: string[]) => void;
+  // Texto exibido no chip quando difere do valor (o valor segue sendo a chave do filtro).
+  rotulos?: Record<string, string>;
 }) {
   if (!opcoes.length) return null;
   const todasSelecionadas = selecionadas.length === opcoes.length;
@@ -54,7 +57,7 @@ export function ChipFiltro({
             onClick={(evento) => clicarOpcao(valor, evento)}
             className={chipClasse(selecionadas.includes(valor))}
           >
-            {valor}
+            {rotulos?.[valor] ?? valor}
           </button>
         ))}
       </div>

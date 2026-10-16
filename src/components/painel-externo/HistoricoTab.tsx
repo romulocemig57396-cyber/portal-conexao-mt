@@ -6,7 +6,13 @@ import type { LabelProps } from "recharts";
 import type { PainelExternoGrafico, PainelExternoHistoricoLinha, PainelExternoValorObraLinha } from "@/lib/db";
 import { ChipFiltro } from "./ChipFiltro";
 import { CardValorObra, somarValorObra } from "./CardValorObra";
-import { ordenarClasses, ordenarFaixasCaixas, ordenarTiposSolicitacao } from "@/lib/tiposSolicitacaoPainel";
+import {
+  ROTULOS_UNIVERSALIZACAO,
+  ordenarClasses,
+  ordenarFaixasCaixas,
+  ordenarTiposSolicitacao,
+  ordenarUniversalizacoes,
+} from "@/lib/tiposSolicitacaoPainel";
 
 // Mesma paleta/categorias do painelConexao (client/src/App.jsx
 // CATEGORIAS_APROVACAO/LIBERACAO/UNIVERSALIZACAO), pra manter os gráficos
@@ -49,7 +55,8 @@ function agregarPorMes(
   regionais: string[],
   tipos: string[],
   classes: string[],
-  faixas: string[]
+  faixas: string[],
+  universalizacoes: string[]
 ) {
   const filtradas = linhas.filter(
     (l) =>
@@ -59,7 +66,8 @@ function agregarPorMes(
       regionais.includes(l.regional) &&
       tipos.includes(l.tipoSolicitacao) &&
       classes.includes(l.classe) &&
-      faixas.includes(l.faixaCaixas)
+      faixas.includes(l.faixaCaixas) &&
+      universalizacoes.includes(l.universalizacao)
   );
   const porMes = new Map<string, Record<string, number>>();
   for (const l of filtradas) {
@@ -129,6 +137,7 @@ function GraficoHistorico({
   tipos,
   classes,
   faixas,
+  universalizacoes,
 }: {
   grafico: PainelExternoGrafico;
   linhas: PainelExternoHistoricoLinha[];
@@ -139,16 +148,17 @@ function GraficoHistorico({
   tipos: string[];
   classes: string[];
   faixas: string[];
+  universalizacoes: string[];
 }) {
   const dados = useMemo(
-    () => agregarPorMes(linhas, grafico, servicos, mercados, regionais, tipos, classes, faixas),
-    [linhas, grafico, servicos, mercados, regionais, tipos, classes, faixas]
+    () => agregarPorMes(linhas, grafico, servicos, mercados, regionais, tipos, classes, faixas, universalizacoes),
+    [linhas, grafico, servicos, mercados, regionais, tipos, classes, faixas, universalizacoes]
   );
   const categorias = CATEGORIAS[grafico];
   const temValorObra = useMemo(() => valorObra.some((v) => v.grafico === grafico), [valorObra, grafico]);
   const totalValorObra = useMemo(
-    () => somarValorObra(valorObra, grafico, { servicos, mercados, regionais, tipos, classes, faixas }),
-    [valorObra, grafico, servicos, mercados, regionais, tipos, classes, faixas]
+    () => somarValorObra(valorObra, grafico, { servicos, mercados, regionais, tipos, classes, faixas, universalizacoes }),
+    [valorObra, grafico, servicos, mercados, regionais, tipos, classes, faixas, universalizacoes]
   );
 
   return (
@@ -223,6 +233,10 @@ export function HistoricoTab({
 
   const classesDisponiveis = useMemo(() => ordenarClasses(linhas.map((l) => l.classe)), [linhas]);
   const faixasDisponiveis = useMemo(() => ordenarFaixasCaixas(linhas.map((l) => l.faixaCaixas)), [linhas]);
+  const universalizacoesDisponiveis = useMemo(
+    () => ordenarUniversalizacoes(linhas.map((l) => l.universalizacao)),
+    [linhas]
+  );
 
   const [servicos, setServicos] = useState<string[]>(servicosDisponiveis);
   const [mercados, setMercados] = useState<string[]>(mercadosDisponiveis);
@@ -230,6 +244,7 @@ export function HistoricoTab({
   const [tipos, setTipos] = useState<string[]>(tiposDisponiveis);
   const [classes, setClasses] = useState<string[]>(classesDisponiveis);
   const [faixas, setFaixas] = useState<string[]>(faixasDisponiveis);
+  const [universalizacoes, setUniversalizacoes] = useState<string[]>(universalizacoesDisponiveis);
 
   if (!linhas.length) {
     return <p className="text-sm text-gray-500">Nenhum dado de histórico disponível ainda.</p>;
@@ -244,10 +259,17 @@ export function HistoricoTab({
         <ChipFiltro label="Tipo de solicitação" opcoes={tiposDisponiveis} selecionadas={tipos} onChange={setTipos} />
         <ChipFiltro label="Classe" opcoes={classesDisponiveis} selecionadas={classes} onChange={setClasses} />
         <ChipFiltro label="Número de caixas" opcoes={faixasDisponiveis} selecionadas={faixas} onChange={setFaixas} />
+        <ChipFiltro
+          label="Universalização"
+          opcoes={universalizacoesDisponiveis}
+          selecionadas={universalizacoes}
+          onChange={setUniversalizacoes}
+          rotulos={ROTULOS_UNIVERSALIZACAO}
+        />
       </div>
-      <GraficoHistorico grafico="aprovacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
-      <GraficoHistorico grafico="liberacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
-      <GraficoHistorico grafico="universalizacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
+      <GraficoHistorico grafico="aprovacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} universalizacoes={universalizacoes} />
+      <GraficoHistorico grafico="liberacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} universalizacoes={universalizacoes} />
+      <GraficoHistorico grafico="universalizacao" linhas={linhas} valorObra={valorObra} servicos={servicos} mercados={mercados} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} universalizacoes={universalizacoes} />
     </div>
   );
 }

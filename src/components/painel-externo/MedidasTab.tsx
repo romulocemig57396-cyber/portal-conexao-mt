@@ -11,7 +11,13 @@ import type {
 import { SITUACAO_META } from "@/lib/situacao";
 import { ChipFiltro } from "./ChipFiltro";
 import { CardValorObra, somarValorObra } from "./CardValorObra";
-import { ordenarClasses, ordenarFaixasCaixas, ordenarTiposSolicitacao } from "@/lib/tiposSolicitacaoPainel";
+import {
+  ROTULOS_UNIVERSALIZACAO,
+  ordenarClasses,
+  ordenarFaixasCaixas,
+  ordenarTiposSolicitacao,
+  ordenarUniversalizacoes,
+} from "@/lib/tiposSolicitacaoPainel";
 
 // Grupo 2 usa a situação legada (DES_SITUACAO de TBL_MEDIDAS), com valores
 // que variam por serviço — por isso não tem paleta fixa, cor é atribuída
@@ -30,7 +36,8 @@ function agregarPorMedida(
   regionais: string[],
   tipos: string[],
   classes: string[],
-  faixas: string[]
+  faixas: string[],
+  universalizacoes: string[]
 ) {
   const filtradas = linhas.filter(
     (l) =>
@@ -39,7 +46,8 @@ function agregarPorMedida(
       regionais.includes(l.regional) &&
       tipos.includes(l.tipoSolicitacao) &&
       classes.includes(l.classe) &&
-      faixas.includes(l.faixaCaixas)
+      faixas.includes(l.faixaCaixas) &&
+      universalizacoes.includes(l.universalizacao)
   );
   const porMedida = new Map<string, Record<string, number>>();
   for (const l of filtradas) {
@@ -105,7 +113,8 @@ function agregarPorRegional(
   regionais: string[],
   tipos: string[],
   classes: string[],
-  faixas: string[]
+  faixas: string[],
+  universalizacoes: string[]
 ) {
   const filtradas = linhas.filter(
     (l) =>
@@ -113,7 +122,8 @@ function agregarPorRegional(
       regionais.includes(l.regional) &&
       tipos.includes(l.tipoSolicitacao) &&
       classes.includes(l.classe) &&
-      faixas.includes(l.faixaCaixas)
+      faixas.includes(l.faixaCaixas) &&
+      universalizacoes.includes(l.universalizacao)
   );
   const porRegional = new Map<string, Record<string, number>>();
   for (const l of filtradas) {
@@ -135,6 +145,7 @@ function GraficoMedida0070Regional({
   tipos,
   classes,
   faixas,
+  universalizacoes,
 }: {
   linhas: PainelExternoMedida0070RegionalLinha[];
   servicos: string[];
@@ -142,8 +153,10 @@ function GraficoMedida0070Regional({
   tipos: string[];
   classes: string[];
   faixas: string[];
+  universalizacoes: string[];
 }) {
-  const dados = useMemo(() => agregarPorRegional(linhas, servicos, regionais, tipos, classes, faixas), [linhas, servicos, regionais, tipos, classes, faixas]);
+  const dados = useMemo(() => agregarPorRegional(linhas, servicos, regionais, tipos, classes, faixas, universalizacoes),
+    [linhas, servicos, regionais, tipos, classes, faixas, universalizacoes]);
   const situacoes = useMemo(
     () =>
       [...new Set(dados.flatMap((d) => Object.keys(d).filter((k) => !["regional", "_bruto", "_total"].includes(k))))].sort(),
@@ -215,6 +228,7 @@ function GraficoMedidas({
   tipos,
   classes,
   faixas,
+  universalizacoes,
 }: {
   titulo: string;
   linhas: PainelExternoMedidaLinha[];
@@ -224,10 +238,11 @@ function GraficoMedidas({
   tipos: string[];
   classes: string[];
   faixas: string[];
+  universalizacoes: string[];
 }) {
   const dados = useMemo(
-    () => agregarPorMedida(linhas, grupo, servicos, regionais, tipos, classes, faixas),
-    [linhas, grupo, servicos, regionais, tipos, classes, faixas]
+    () => agregarPorMedida(linhas, grupo, servicos, regionais, tipos, classes, faixas, universalizacoes),
+    [linhas, grupo, servicos, regionais, tipos, classes, faixas, universalizacoes]
   );
   const situacoes = useMemo(
     () =>
@@ -324,15 +339,25 @@ export function MedidasTab({
     [linhas, medida0070Regional]
   );
 
+  const universalizacoesDisponiveis = useMemo(
+    () =>
+      ordenarUniversalizacoes([
+        ...linhas.map((l) => l.universalizacao),
+        ...medida0070Regional.map((l) => l.universalizacao),
+      ]),
+    [linhas, medida0070Regional]
+  );
+
   const [servicos, setServicos] = useState<string[]>(servicosDisponiveis);
   const [regionais, setRegionais] = useState<string[]>(regionaisDisponiveis);
   const [tipos, setTipos] = useState<string[]>(tiposDisponiveis);
   const [classes, setClasses] = useState<string[]>(classesDisponiveis);
   const [faixas, setFaixas] = useState<string[]>(faixasDisponiveis);
+  const [universalizacoes, setUniversalizacoes] = useState<string[]>(universalizacoesDisponiveis);
 
   const totalValorObra = useMemo(
-    () => somarValorObra(valorObra ?? [], "medidas", { servicos, regionais, tipos, classes, faixas }),
-    [valorObra, servicos, regionais, tipos, classes, faixas]
+    () => somarValorObra(valorObra ?? [], "medidas", { servicos, regionais, tipos, classes, faixas, universalizacoes }),
+    [valorObra, servicos, regionais, tipos, classes, faixas, universalizacoes]
   );
 
   if (!linhas.length && !medida0070Regional.length) {
@@ -347,6 +372,13 @@ export function MedidasTab({
         <ChipFiltro label="Tipo de solicitação" opcoes={tiposDisponiveis} selecionadas={tipos} onChange={setTipos} />
         <ChipFiltro label="Classe" opcoes={classesDisponiveis} selecionadas={classes} onChange={setClasses} />
         <ChipFiltro label="Número de caixas" opcoes={faixasDisponiveis} selecionadas={faixas} onChange={setFaixas} />
+        <ChipFiltro
+          label="Universalização"
+          opcoes={universalizacoesDisponiveis}
+          selecionadas={universalizacoes}
+          onChange={setUniversalizacoes}
+          rotulos={ROTULOS_UNIVERSALIZACAO}
+        />
       </div>
       {valorObra !== null && valorObra.some((v) => v.grafico === "medidas") && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -362,8 +394,9 @@ export function MedidasTab({
         tipos={tipos}
         classes={classes}
         faixas={faixas}
+        universalizacoes={universalizacoes}
       />
-      <GraficoMedida0070Regional linhas={medida0070Regional} servicos={servicos} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} />
+      <GraficoMedida0070Regional linhas={medida0070Regional} servicos={servicos} regionais={regionais} tipos={tipos} classes={classes} faixas={faixas} universalizacoes={universalizacoes} />
       <GraficoMedidas
         titulo="Medidas pendentes — Áreas envolvidas"
         linhas={linhas}
@@ -373,6 +406,7 @@ export function MedidasTab({
         tipos={tipos}
         classes={classes}
         faixas={faixas}
+        universalizacoes={universalizacoes}
       />
     </div>
   );

@@ -27,3 +27,16 @@ function ordenarPor(valores: Iterable<string>, ordem: string[]): string[] {
 
 export const ordenarClasses = (valores: Iterable<string>) => ordenarPor(valores, ORDEM_CLASSE);
 export const ordenarFaixasCaixas = (valores: Iterable<string>) => ordenarPor(valores, ORDEM_FAIXA_CAIXAS);
+
+// Universalização: mesmas 5 categorias (e rótulos) do gráfico "Universalização de obras".
+const ORDEM_UNIVERSALIZACAO = ["UNIVERSALIZADA", "NAO_UNIVERSALIZADA", "FORA_UNIVERSALIZACAO", "SEGURANCA", "OUTROS"];
+
+export const ROTULOS_UNIVERSALIZACAO: Record<string, string> = {
+  UNIVERSALIZADA: "Universalizada",
+  NAO_UNIVERSALIZADA: "Não universalizada",
+  FORA_UNIVERSALIZACAO: "Fora da universalização",
+  SEGURANCA: "Obras de segurança",
+  OUTROS: "Outros",
+};
+
+export const ordenarUniversalizacoes = (valores: Iterable<string>) => ordenarPor(valores, ORDEM_UNIVERSALIZACAO);

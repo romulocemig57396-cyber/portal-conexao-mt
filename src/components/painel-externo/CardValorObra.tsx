@@ -29,6 +29,7 @@ export function somarValorObra(
     tipos: string[];
     classes: string[];
     faixas: string[];
+    universalizacoes: string[];
   }
 ) {
   let notas = 0;
@@ -41,7 +42,8 @@ export function somarValorObra(
       filtros.regionais.includes(l.regional) &&
       filtros.tipos.includes(l.tipoSolicitacao) &&
       filtros.classes.includes(l.classe) &&
-      filtros.faixas.includes(l.faixaCaixas)
+      filtros.faixas.includes(l.faixaCaixas) &&
+      filtros.universalizacoes.includes(l.universalizacao)
     ) {
       notas += l.notas;
       valor += l.valorObra;

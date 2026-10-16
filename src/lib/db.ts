@@ -99,6 +99,7 @@ export const SEM_TIPO_SOLICITACAO = "SEM TIPO";
 export const GRAFICO_VALOR_OBRA_PADRAO = "medidas";
 export const CLASSE_PADRAO = "OUTRAS";
 export const FAIXA_CAIXAS_PADRAO = "SEM INFORMAÇÃO";
+export const UNIVERSALIZACAO_PADRAO = "OUTROS";
 
 export type PainelExternoGrafico = "aprovacao" | "liberacao" | "universalizacao";
 
@@ -111,6 +112,7 @@ export interface PainelExternoHistoricoLinha {
   tipoSolicitacao: string;
   classe: string;
   faixaCaixas: string;
+  universalizacao: string;
   categoria: string;
   quantidade: number;
 }
@@ -123,6 +125,7 @@ export interface PainelExternoMedidaLinha {
   tipoSolicitacao: string;
   classe: string;
   faixaCaixas: string;
+  universalizacao: string;
   codMedida: string;
   situacao: string;
   quantidade: number;
@@ -139,6 +142,7 @@ export interface PainelExternoValorObraLinha {
   tipoSolicitacao: string;
   classe: string;
   faixaCaixas: string;
+  universalizacao: string;
   notas: number;
   valorObra: number;
 }
@@ -149,6 +153,7 @@ export interface PainelExternoMedida0070RegionalLinha {
   tipoSolicitacao: string;
   classe: string;
   faixaCaixas: string;
+  universalizacao: string;
   situacao: string;
   quantidade: number;
 }
@@ -285,6 +290,7 @@ async function migrate(client: Client) {
         tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
         classe TEXT NOT NULL DEFAULT 'OUTRAS',
         faixa_caixas TEXT NOT NULL DEFAULT 'SEM INFORMAÇÃO',
+        universalizacao TEXT NOT NULL DEFAULT 'OUTROS',
         categoria TEXT NOT NULL,
         quantidade INTEGER NOT NULL
       )`,
@@ -297,6 +303,7 @@ async function migrate(client: Client) {
         tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
         classe TEXT NOT NULL DEFAULT 'OUTRAS',
         faixa_caixas TEXT NOT NULL DEFAULT 'SEM INFORMAÇÃO',
+        universalizacao TEXT NOT NULL DEFAULT 'OUTROS',
         cod_medida TEXT NOT NULL,
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
@@ -310,6 +317,7 @@ async function migrate(client: Client) {
         tipo_solicitacao TEXT NOT NULL,
         classe TEXT NOT NULL,
         faixa_caixas TEXT NOT NULL,
+        universalizacao TEXT NOT NULL DEFAULT 'OUTROS',
         notas INTEGER NOT NULL,
         valor_obra REAL NOT NULL
       )`,
@@ -320,6 +328,7 @@ async function migrate(client: Client) {
         tipo_solicitacao TEXT NOT NULL DEFAULT 'SEM TIPO',
         classe TEXT NOT NULL DEFAULT 'OUTRAS',
         faixa_caixas TEXT NOT NULL DEFAULT 'SEM INFORMAÇÃO',
+        universalizacao TEXT NOT NULL DEFAULT 'OUTROS',
         situacao TEXT NOT NULL,
         quantidade INTEGER NOT NULL
       )`,
@@ -366,7 +375,7 @@ async function migrate(client: Client) {
   const colunas = await client.execute("PRAGMA table_info(usuarios)");
   const nomesColunas = colunas.rows.map((r) => (r as unknown as { name: string }).name);
   // Tabelas do painel externo criadas antes dos filtros de tipo de solicitação
-  // (LN, AC, ML, NT...), classe e número de caixas não têm as colunas —
+  // (LN, AC, ML, NT...), classe, número de caixas e universalização não têm as colunas —
   // CREATE TABLE IF NOT EXISTS não altera tabela existente, então acrescenta
   // aqui. Dados antigos ficam com o valor padrão até a próxima ingestão (que
   // substitui tudo).
@@ -374,6 +383,7 @@ async function migrate(client: Client) {
     "painel_externo_historico",
     "painel_externo_medidas",
     "painel_externo_medida_0070_regional",
+    "painel_externo_valor_obra",
   ]) {
     const cols = await client.execute(`PRAGMA table_info(${tabela})`);
     const existentes = cols.rows.map((r) => (r as unknown as { name: string }).name);
@@ -381,6 +391,7 @@ async function migrate(client: Client) {
       ["tipo_solicitacao", SEM_TIPO_SOLICITACAO],
       ["classe", CLASSE_PADRAO],
       ["faixa_caixas", FAIXA_CAIXAS_PADRAO],
+      ["universalizacao", UNIVERSALIZACAO_PADRAO],
     ]) {
       if (!existentes.includes(coluna)) {
         await client.execute(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} TEXT NOT NULL DEFAULT '${padrao}'`);
@@ -1069,8 +1080,8 @@ export async function substituirPainelExterno(data: {
   for (const h of data.historico) {
     statements.push({
       sql: `INSERT INTO painel_externo_historico
-              (grafico, mes, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, categoria, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (grafico, mes, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, universalizacao, categoria, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         h.grafico,
         h.mes,
@@ -1080,6 +1091,7 @@ export async function substituirPainelExterno(data: {
         h.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
         h.classe ?? CLASSE_PADRAO,
         h.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
+        h.universalizacao ?? UNIVERSALIZACAO_PADRAO,
         h.categoria,
         h.quantidade,
       ],
@@ -1089,8 +1101,8 @@ export async function substituirPainelExterno(data: {
   for (const m of data.medidas) {
     statements.push({
       sql: `INSERT INTO painel_externo_medidas
-              (grupo, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, cod_medida, situacao, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (grupo, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, universalizacao, cod_medida, situacao, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         m.grupo,
         m.servico,
@@ -1099,6 +1111,7 @@ export async function substituirPainelExterno(data: {
         m.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
         m.classe ?? CLASSE_PADRAO,
         m.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
+        m.universalizacao ?? UNIVERSALIZACAO_PADRAO,
         m.codMedida,
         m.situacao,
         m.quantidade,
@@ -1109,8 +1122,8 @@ export async function substituirPainelExterno(data: {
   for (const v of data.valorObra ?? []) {
     statements.push({
       sql: `INSERT INTO painel_externo_valor_obra
-              (grafico, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, notas, valor_obra)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (grafico, servico, mercado, regional, tipo_solicitacao, classe, faixa_caixas, universalizacao, notas, valor_obra)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         v.grafico ?? GRAFICO_VALOR_OBRA_PADRAO,
         v.servico,
@@ -1119,6 +1132,7 @@ export async function substituirPainelExterno(data: {
         v.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
         v.classe ?? CLASSE_PADRAO,
         v.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
+        v.universalizacao ?? UNIVERSALIZACAO_PADRAO,
         v.notas,
         v.valorObra,
       ],
@@ -1128,14 +1142,15 @@ export async function substituirPainelExterno(data: {
   for (const r of data.medida0070Regional) {
     statements.push({
       sql: `INSERT INTO painel_externo_medida_0070_regional
-              (servico, regional, tipo_solicitacao, classe, faixa_caixas, situacao, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              (servico, regional, tipo_solicitacao, classe, faixa_caixas, universalizacao, situacao, quantidade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         r.servico,
         r.regional,
         r.tipoSolicitacao ?? SEM_TIPO_SOLICITACAO,
         r.classe ?? CLASSE_PADRAO,
         r.faixaCaixas ?? FAIXA_CAIXAS_PADRAO,
+        r.universalizacao ?? UNIVERSALIZACAO_PADRAO,
         r.situacao,
         r.quantidade,
       ],
@@ -1205,16 +1220,16 @@ export async function getPainelExternoCompleto(): Promise<PainelExternoCompleto>
 
   const [historico, medidas, valorObra, medida0070Regional, inconsistencias, orcamentos, meta] = await Promise.all([
     client.execute(
-      "SELECT grafico, mes, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, categoria, quantidade FROM painel_externo_historico"
+      "SELECT grafico, mes, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, universalizacao, categoria, quantidade FROM painel_externo_historico"
     ),
     client.execute(
-      "SELECT grupo, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
+      "SELECT grupo, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, universalizacao, cod_medida AS codMedida, situacao, quantidade FROM painel_externo_medidas"
     ),
     client.execute(
-      "SELECT grafico, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, notas, valor_obra AS valorObra FROM painel_externo_valor_obra"
+      "SELECT grafico, servico, mercado, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, universalizacao, notas, valor_obra AS valorObra FROM painel_externo_valor_obra"
     ),
     client.execute(
-      "SELECT servico, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, situacao, quantidade FROM painel_externo_medida_0070_regional"
+      "SELECT servico, regional, tipo_solicitacao AS tipoSolicitacao, classe, faixa_caixas AS faixaCaixas, universalizacao, situacao, quantidade FROM painel_externo_medida_0070_regional"
     ),
     client.execute(
       `SELECT tipo, num_nota AS numNota, cod_servico AS codServico, dat_criacao AS datCriacao,
